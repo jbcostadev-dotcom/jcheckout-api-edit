@@ -1,0 +1,189 @@
+$(document).ready(function(){
+
+    let _global = {
+        trocaAba: ()=>{
+            $(".lateral").css('cursor', 'pointer');
+
+            $(".lateral").click(function(evt){
+                let abaselecionada = $(evt.currentTarget).attr('aba');
+                let divabaselecionada = $("#div"+abaselecionada)
+
+                abaselecionada = $(evt.currentTarget);
+                $(abaselecionada).children().addClass("active")
+                abaselecionada = $(abaselecionada).attr('aba');
+
+            $(".lateral").each((index,data)=>{
+                if($(data).attr('aba') != abaselecionada){
+                    $(data).children().removeClass('active')
+                }else{
+                    let textoaba = $(".active").children()
+                    $("#texto_abaatual").text($(textoaba[1]).text()) 
+                }
+
+                $("#divmain").children().each((index2,data2)=>{
+                    if($(data2).attr('id') != "div"+abaselecionada){
+                        $(data2).hide()
+                    }else{
+                        $(data2).show()
+                    }
+                    
+                })
+            
+            })
+         })
+    },
+    registrarUsuario: ()=>{
+        let validado;
+
+        $("#btncadastrar").click(function(e){
+            const campos = ['reg_usuario', 'reg_senha', 'reg_dtiniciotoken', 'reg_qtd_subusuarios', 'reg_qtd_lojas'];
+            let camposerro = [];
+
+            $(campos).each((index,data)=>{
+                if($('#'+data).val() == ''){
+                    validado = false;
+                    camposerro.push($('#'+data).prev().text());
+                }
+            })
+            console.log(camposerro)
+
+            if(validado != false || camposerro.length < 1){
+                $(this).text('');
+                $(this).removeClass('btn-primary');
+                $(this).addClass('btn-success');
+                $(this).append($("<div>",{
+                    class : 'spinner-border text-white',
+                    role : 'status',
+                    style : 'width: 20px; height: 20px;'
+                }))
+    
+                $.ajax({
+                    type : 'POST',
+                    url : '/master/cadastraUsuario',
+                    data : {
+                        usuario : $("#reg_usuario").val(),
+                        senha : $("#reg_senha").val(),
+                        dt_inicio_token : $("#reg_dtiniciotoken").val(),
+                        qtd_subusuarios : $("#reg_qtd_subusuarios").val(),
+                        qtd_lojas : $("#reg_qtd_lojas").val()
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },                
+                    success: (retorno)=>{
+                        if(retorno.status==200){
+                            $(".toast-text").text(retorno.mensagem)
+                            $("#toast").addClass("toastsucesso");
+                            $("#toast").addClass("active");
+                            $("#btncadastrar").children().remove();
+                            $("#btncadastrar").text('Sucesso!');
+                            setTimeout(()=>{
+                                $("#btncadastrar").removeClass("btn-success")
+                                $("#btncadastrar").addClass("btn-primary")
+                                $("#btncadastrar").text("Cadastrar")
+                                $("#toast").removeClass("active")
+                            }, 3000)
+                        }else{
+                            $(".toast-text").text("Não foi possível salvar o usuário!")
+                            $("#toast").addClass("toasterro");
+                            $("#toast").addClass("active")
+                        }
+    
+                    }
+                })
+            }else{
+                let string = "Verifique os campos: ";
+                $(camposerro).each((index,data)=>{
+                    string += data+', '
+                })
+                $(".toast-text").text(string)
+                $("#toast").addClass("active");
+                $("#toast").addClass("toastwarning");
+                setTimeout(()=>{
+                    $("#toast").removeClass("active")
+                }, 3000)
+            }
+        })
+
+        
+    },
+
+    usuariosAtivos: ()=>{
+        $.ajax({
+            url : '/master/getUsuarios',
+            success: (retorno)=>{
+                $(retorno).each((index,data)=>{
+                    $("#row_usuarios").append(
+                        '<div class="col-xl-3 col-sm-6" style="margin: 5px;">'+
+                        '<div class="card">'+
+                          '<div class="card-body p-3">'+
+                            '<div class="row">'+
+                              '<div class="col-8">'+
+                                '<div class="numbers">'+
+                                  '<p class="text-sm mb-0 text-uppercase font-weight-bold">'+data.usuario+'</p>'+
+                                  '<h5 class="font-weight-bolder">'+
+                                    'R$ 0'+
+                                  '</h5>'+
+                                  '<p class="mb-0">'+
+                                    'Ativo até: '+data.dtfimtoken+
+                                  '</p>'+
+                                  '<p class="mb-0">'+
+                                    'Lojas Criadas: x'+
+                                  '</p>'+
+                                  '<p class="mb-0">'+
+                                    'Usuários Registrados: x'+
+                                  '</p>'+
+                                '</div>'+
+                              '</div>'+
+                              '<div class="col-4 text-end" id="usuario_pai_"'+data.id_usuario_pai+' style="display: flex; justify-content: center; flex-direction: column;">'+
+                                '<div class="icon icon-shape bg-gradient-success shadow-warning text-center rounded-circle" id="btnmais_card" style="cursor: pointer;">'+
+                                  '<i class="ni ni-bold-down text-lg opacity-10" aria-hidden="true"></i>'+
+                                '</div>'+
+                              '</div>'+
+                            '</div>'+
+                          '</div>'+
+                        '</div>'+
+                      '</div>'
+                    )
+                })
+
+            $(".g-sidenav-show").append(
+                '<div class="modal fade" id="exampleModal'+data.id_usuario_pai+'" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">'+
+                '<div class="modal-dialog modal-dialog-centered" role="document">'+
+                  '<div class="modal-content">'+
+                    '<div class="modal-header">'+
+                      '<h5 class="modal-title" id="exampleModalLabel">Modal title</h5>'+
+                      '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">'+
+                        '<span aria-hidden="true">&times;</span>'+
+                      '</button>'+
+                    '</div>'+
+                    '<div class="modal-body">'+
+                      '...'+
+                    '</div>'+
+                    '<div class="modal-footer">'+
+                      '<button type="button" class="btn bg-gradient-secondary" data-bs-dismiss="modal">Close</button>'+
+                      '<button type="button" class="btn bg-gradient-primary">Save changes</button>'+
+                    '</div>'+
+                  '</div>'+
+                '</div>'+
+              '</div>'
+            )
+            }
+        })
+
+    },
+    updateCards: ()=>{
+
+    }
+
+    }
+
+    const init = ()=>{
+        _global.trocaAba();
+        _global.registrarUsuario();
+        _global.usuariosAtivos();
+    }
+
+    init();
+
+})
