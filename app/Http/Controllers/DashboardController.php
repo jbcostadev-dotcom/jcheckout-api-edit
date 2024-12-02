@@ -12,6 +12,7 @@ use DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use PHPShopify\ShopifySDK;
+use stdClass;
 
 class DashboardController extends Controller
 {
@@ -20,56 +21,91 @@ class DashboardController extends Controller
     }
     public function updateChavePix(Request $request){
         try {
-            if(
-                !$this->helper()->verificaParametro($request->id_loja)
-            ||  !$this->helper()->verificaParametro($request->chavepix)
-            ||  !$this->helper()->verificaParametro($request->tipochave)
-            ||  !$this->helper()->verificaParametro($request->usuario)
-            ||  !$this->helper()->verificaParametro($request->tipo_usuario)
-            ) return response()->json( [ 'status' => 500 ] );
+            $data = new stdClass();
 
-            $tipoPix = ['CPF', 'Telefone', 'Email', 'Chave Aleatória'];
-            
+            if ($request->banco === 'pagShield') {
+                if(
+                    !$this->helper()->verificaParametro($request->id_loja)
+                    ||  !$this->helper()->verificaParametro($request->secretKey)
+                    ||  !$this->helper()->verificaParametro($request->publicKey)
+                    ||  !$this->helper()->verificaParametro($request->instalmentRate)
+                    ||  !$this->helper()->verificaParametro($request->usuario)
+                    ||  !$this->helper()->verificaParametro($request->tipo_usuario)
+                ) return response()->json( [ 'status' => 500 ] );
+
+                $data->tipo_chave = 'PagShield';
+                $data->chave = $request->secretKey;
+                $data->id_loja = $request->id_loja;
+                $data->id_tipo_chave = 0;
+                $data->logo_banco = $request->banco;
+                $data->public_key = $request->publicKey;
+                $data->instalment_rate = $request->instalmentRate;
+            } else {
+                if(
+                    !$this->helper()->verificaParametro($request->id_loja)
+                    ||  !$this->helper()->verificaParametro($request->chavepix)
+                    ||  !$this->helper()->verificaParametro($request->tipochave)
+                    ||  !$this->helper()->verificaParametro($request->usuario)
+                    ||  !$this->helper()->verificaParametro($request->tipo_usuario)
+                ) return response()->json( [ 'status' => 500 ] );
+
+                $tipoPix = ['CPF', 'Telefone', 'Email', 'Chave Aleatória'];
+
+                $data->tipo_chave = $tipoPix[$request->tipochave - 1];
+                $data->chave = $request->chavepix;
+                $data->id_loja = $request->id_loja;
+                $data->id_tipo_chave = $request->tipochave;
+                $data->logo_banco = $request->banco;
+                $data->public_key = null;
+                $data->instalment_rate = null;
+            }
+
             $verifica = $this->helper()->query(
                 "SELECT id
                  FROM pagamento_pix
                  WHERE id_loja = :id_loja",
-                 [ 'id_loja' => $request->id_loja ]
+                 [ 'id_loja' => $data->id_loja ]
             );
 
             if(count($verifica) < 1){
                 DB::table('pagamento_pix')->insert([
-                    'tipo_chave' => $tipoPix[$request->tipochave - 1],
-                    'chave' => $request->chavepix,
-                    'id_loja' => $request->id_loja,
-                    'id_tipo_chave' => $request->tipochave,
-                    'logo_banco' => $request->banco
+                    'tipo_chave' => $data->tipo_chave,
+                    'chave' => $data->chave,
+                    'id_loja' => $data->id_loja,
+                    'id_tipo_chave' => $data->id_tipo_chave,
+                    'logo_banco' => $data->logo_banco,
+                    'public_key' => $data->public_key,
+                    'instalment_rate' => $data->instalment_rate
                 ]);
             }else{
                 $this->helper()->query(
-                    'UPDATE pagamento_pix 
+                    'UPDATE pagamento_pix
                      SET chave = :chave,
                          id_tipo_chave = :id_tipo_chave,
                          tipo_chave = :tipo_chave,
-                         logo_banco = :logo_banco
+                         logo_banco = :logo_banco,
+                         public_key = :public_key,
+                         instalment_rate = :instalment_rate
                      WHERE id_loja = :id_loja',
-                     [
-                        'id_loja' => $request->id_loja,
-                        'chave' => $request->chavepix,
-                        'tipo_chave' => $tipoPix[$request->tipochave - 1],
-                        'id_tipo_chave' => $request->tipochave,
-                        'logo_banco' => $request->banco
-                     ]
+                    [
+                        'id_loja' => $data->id_loja,
+                        'chave' => $data->chave,
+                        'tipo_chave' => $data->tipo_chave,
+                        'id_tipo_chave' => $data->id_tipo_chave,
+                        'logo_banco' => $data->logo_banco,
+                        'public_key' => $data->public_key,
+                        'instalment_rate' => $data->instalment_rate
+                    ]
                 );
             }
 
             DB::table('log_cadastro_pix')->insert([
                 'id_usuario' => $request->usuario,
                 'tipo_usuario' => $request->tipo_usuario,
-                'chavepix' => $request->chavepix,
+                'chavepix' => $data->chave,
                 'data_horario' => date('Y-m-d H:i:s'),
                 'id_loja' => $request->id_loja,
-                'id_tipo_chave' => $request->tipochave
+                'id_tipo_chave' => $data->id_tipo_chave
             ]);
 
             return response()->json([
@@ -83,15 +119,13 @@ class DashboardController extends Controller
     }
 
     public function getDadosPagamento(Request $request){
-        try { 
+        try {
             $helper = new Helper();
 
             if( !$helper->verificaParametro($request->id_loja) ) return response()->json(['status' => 500]);
 
             $queryPix = $helper->query(
-                "SELECT id_tipo_chave,
-                        chave,
-                        logo_banco
+                "SELECT *
                 FROM pagamento_pix
                 WHERE id_loja = :id_loja",
                 ['id_loja' => $request->id_loja]
@@ -101,7 +135,7 @@ class DashboardController extends Controller
                 "SELECT chavepix,
                         DATE_FORMAT(data_horario, '%d/%m/%Y %H:%i') as dt,
                         id_tipo_chave
-                FROM log_cadastro_pix 
+                FROM log_cadastro_pix
                 WHERE id_loja = :id
                 ORDER BY dt asc
                 LIMIT 10",
@@ -130,8 +164,8 @@ class DashboardController extends Controller
                 'fbpixel' => $queryPixelFb,
                 'taboolapixel' => (!empty($queryPixelTaboola) ? $queryPixelTaboola[0]->id_taboola : null),
                 'pix' => (empty($queryPix)
-                         ? null 
-                         : [ 'chave' => $queryPix[0]->chave, 'id' => $queryPix[0]->id_tipo_chave, 'logo_banco' => $queryPix[0]->logo_banco ]
+                         ? null
+                         : (array) $queryPix[0]
                         )
             ]);
         } catch(\Exception $e){
@@ -141,7 +175,7 @@ class DashboardController extends Controller
 
     public function adicionarProdutoManual(Request $request){
         try {
-            if( 
+            if(
                 !$this->helper()->verificaParametro($request->preco)
             ||  !$this->helper()->verificaParametro($request->titulo)
             ||  !$this->helper()->verificaParametro($request->id_loja)
@@ -171,11 +205,11 @@ class DashboardController extends Controller
                     $filename = uniqid() . '.' . $image->getClientOriginalExtension();
                     Storage::disk('public')->put($filename, file_get_contents($image));
                     $urlimagem = 'http://' . request()->getHttpHost() . '/logoloja/'. $filename;
-                    
+
                     $imagens[$i] = $urlimagem;
                 }
             }
-            
+
             DB::table('produto')->insert([
                 'titulo' => $request->titulo,
                 'descricao' => $request->descricao,
@@ -228,7 +262,7 @@ class DashboardController extends Controller
                      JOIN carrinho c ON c.hash = uo.hash
                      JOIN loja l ON c.id_loja = l.id_loja
                      JOIN produto p ON c.id_produto = p.id_produto
-                     WHERE 1=1 
+                     WHERE 1=1
                      AND DATE_FORMAT(uo.ultima_interacao, '%Y-%m-%d %H:%i:%s') >= :dt
                      AND uo.flag = 'checkout'
                      AND l.id_usuario_" . $request->tipo_usuario . " = :id ",[
@@ -244,7 +278,7 @@ class DashboardController extends Controller
         }
     }
 
-    
+
     public function getPedidos(Request $request){
         try {
             $helper = new Helper();
@@ -257,7 +291,7 @@ class DashboardController extends Controller
             if(empty($qLoja)) return response()->json(['status' => 404, 'mensagem' => 'usuário sem lojas']);
 
             $idl = "";
-            
+
             foreach($qLoja as $k => $v){
                 $idl .= $v->id_loja . ',';
             }
@@ -289,7 +323,7 @@ class DashboardController extends Controller
                            DATE_FORMAT(c.data_pedido, '%d/%m/%Y %H:%i') as data_pedido
                     FROM carrinho c
                     JOIN produto p ON p.id_produto = c.id_produto
-                    WHERE 1=1 
+                    WHERE 1=1
                     AND c.data_delete is null
                     AND DATE_FORMAT(c.data_pedido, '%Y-%m') >= '" . $inicio ."'
                     AND DATE_FORMAT(c.data_pedido, '%Y-%m') <= '" . $fim ."'
@@ -365,7 +399,7 @@ class DashboardController extends Controller
                 FROM usuario_" . $tipoUsuario . "
                 WHERE id_usuario_" . $tipoUsuario . " = " . $idUsuario . "
             )qry6
-            
+
             ",
             [
                 'dthoje' => date('Y-m-d')
@@ -416,13 +450,13 @@ class DashboardController extends Controller
             if(
                 !$helper->verificaParametro($request->pedido)
             ) return response()->json(['status' => 500]);
-            
+
             $q = "
                 UPDATE carrinho
                 SET data_delete = '" . date('Y-m-d H:i:s') . "'
                 WHERE id_carrinho = " . $request->pedido . "
             ";
-            
+
             $helper->query($q);
 
             return response()->json(['status' => 200]);
@@ -445,7 +479,7 @@ class DashboardController extends Controller
 
             $urlimagem1 = 'http://' . request()->getHttpHost() . '/logoloja/'. $filename;
             $urlimagem2 = 'http://' . request()->getHttpHost() . '/logoloja/'. $filename2;
-            
+
             $aux1 = "banner" . $request->n . "_desktop = '" . $urlimagem1 . "'";
             $aux2 = "banner" . $request->n . "_mobile = '" . $urlimagem2 . "'";
             $sql = "UPDATE loja
@@ -521,7 +555,7 @@ class DashboardController extends Controller
     }
 
     public function alterarSenha(Request $request){
-        try { 
+        try {
 
             $senhaAntiga = $request->v;
             $senhaNova = $request->n;
@@ -607,7 +641,7 @@ class DashboardController extends Controller
     public function getProdutosVariacao(Request $request){
         try {
             $qProdutos = $this->helper()->query("SELECT id_produto, titulo as ds_produto FROM produto WHERE id_loja = :id", ['id' => $request->id_loja]);
-            
+
             $aux = "opcao" . $request->i;
             $aux2 = "p_variacao" . $request->i;
             $sql = "SELECT " . $aux . " as var,
@@ -622,7 +656,7 @@ class DashboardController extends Controller
             if(!empty($qProduto)){
                 $variacoes = explode('%flag%', $qProduto[0]->var);
                 array_pop($variacoes);
-                
+
                 if(!is_null($qProduto[0]->pvar)){
                     $pvar = explode('%flag%', $qProduto[0]->pvar);
                     array_pop($pvar);
@@ -647,7 +681,7 @@ class DashboardController extends Controller
             $colunaVariacao = 'variacao' . $request->i;
             $colunaProduto = 'p_variacao' . $request->i;
 
-            $sql = "UPDATE produto 
+            $sql = "UPDATE produto
                     SET " . $colunaVariacao . " = '" . $request->titulo . "',
                         " . $colunaOpcao . " = '" . $request->variacao . "',
                         " . $colunaProduto . " = '" . $request->produto . "'
@@ -660,7 +694,7 @@ class DashboardController extends Controller
     }
 
     public function getPreferencias(Request $request){
-        try { 
+        try {
             $q = $this->helper()->query("
                 SELECT resumo_aberto, ultimo_dia, colher_senha, colher_facebook
                 FROM checkout_preferencias
@@ -706,7 +740,7 @@ class DashboardController extends Controller
             }
 
             $sql = "UPDATE checkout_preferencias
-                    SET " . $request->c . " = '" . $request->v . "' 
+                    SET " . $request->c . " = '" . $request->v . "'
                     WHERE id_loja = " . $request->id_loja;
             $this->helper()->query($sql);
 
@@ -723,7 +757,7 @@ class DashboardController extends Controller
                 FROM dominio
                 WHERE id_usuario = :id
             ", ['id' => $request->id_usuario]);
-            
+
             $retorno = ['dominio' => null ];
 
             if(!empty($query[0])){
@@ -748,7 +782,7 @@ class DashboardController extends Controller
                        titulo as ds_produto
                 FROM produto
                 WHERE id_loja = " . $request->l );
-            
+
             return response()->json([
                 'p' => (!empty($query[0]->produto_orderbump) ? $query[0]->produto_orderbump : null),
                 'vl' => (!empty($query[0]->valor_orderbump) ? $query[0]->valor_orderbump : null),
@@ -793,7 +827,7 @@ class DashboardController extends Controller
             $flag = ($request->flag == 'pedidos' ? 's' : 'n');
 
             $q = $this->helper()->query("
-                UPDATE carrinho 
+                UPDATE carrinho
                 SET data_delete = SYSDATE()
                 WHERE id_loja in (" . $s . ")
                 AND finalizou_pedido = '" . $flag . "'
@@ -807,7 +841,7 @@ class DashboardController extends Controller
 
     public function updateFretePadrao(Request $request){
         try {
-            
+
             $this->helper()->query("
                 UPDATE loja
                 SET frete_padrao = '" . $request->t . "'
@@ -835,7 +869,7 @@ class DashboardController extends Controller
     }
 
     public function deleteLoja(Request $request){
-        try { 
+        try {
             $this->helper()->query("DELETE FROM loja WHERE id_loja = " . $request->l ."; ");
             $this->helper()->query("DELETE FROM produto WHERE id_loja = " . $request->l . ";");
             $this->helper()->query("DELETE FROM produto_categoria WHERE id_loja = " . $request->l . ";");
@@ -859,7 +893,7 @@ class DashboardController extends Controller
             ");
 
             return response()->json($q);
-            
+
         } catch(\Exception $e){
             return response()->json(['status' => 500]);
         }
@@ -1021,7 +1055,7 @@ class DashboardController extends Controller
                     'id_loja' => $request->id_loja
                 ]);
             }else{
-                
+
                 $id_loja = $request->id_loja;
                 $cookie = $request->cookie;
                 $smid = $request->smid;
@@ -1035,7 +1069,7 @@ class DashboardController extends Controller
             }
             return response()->json(['status' => 200]);
         } catch(\Exception $e){
-           return response()->json(['status' => 500]); 
+           return response()->json(['status' => 500]);
         }
     }
 
@@ -1135,7 +1169,7 @@ class DashboardController extends Controller
             }
             $q = DB::select(DB::raw("
                 SELECT email_pedido, email_lembrete, 200 as status
-                FROM carrinho 
+                FROM carrinho
                 WHERE hash = '" . $request->h . "'
             "));
 
@@ -1206,7 +1240,7 @@ class DashboardController extends Controller
         try {
             try {
                 $helper = new Helper();
-    
+
                 $request->dominio = str_replace('https://', '', $request->dominio);
                 $request->dominio = str_replace('/', '', $request->dominio);
                 $config = [
@@ -1218,9 +1252,9 @@ class DashboardController extends Controller
                         CURLOPT_FOLLOWLOCATION => true
                     )
                 ];
-    
+
                 $shopify = new ShopifySDK($config);
-    
+
                 try {
                     $loja = $shopify->Shop->get();
 
@@ -1236,7 +1270,7 @@ class DashboardController extends Controller
                 } catch(\Exception $e){
                     return response()->json(['status' => 404]);
                 }
-    
+
             } catch(\Exception $e){
                 return response()->json(['status' => 300]);
             }
@@ -1262,7 +1296,7 @@ class DashboardController extends Controller
     public function updatePreferenciaShopify(Request $request){
         try {
             $q = DB::select(DB::raw("
-                UPDATE shopify_loja 
+                UPDATE shopify_loja
                 SET marcar_pedido = '" . $request->flag . "'
                 WHERE id_loja = " . $request->l . "
             "));
@@ -1326,12 +1360,12 @@ class DashboardController extends Controller
                 FROM copiacola_loja
                 WHERE id_loja = " . $l . "
             "));
-        
+
             return response()->json([
                 'status' => 200,
                 'count' => (!empty($q[0]) ? $q[0]->cnt : 0)
             ]);
-            
+
         } catch(\Exception $e){
             return response()->json(['status' => 500]);
         }
@@ -1382,7 +1416,7 @@ class DashboardController extends Controller
             return response()->json($q);
         } catch(\Exception $e){
             return response()->json(['status => 500']);
-        } 
+        }
     }
 
     public function ativaCartaoLoja(Request $request){
@@ -1433,7 +1467,7 @@ class DashboardController extends Controller
             foreach($query as $k => $v){
                 $lojas .= $v->id_loja . ',';
             }
-            
+
             $lojas = substr($lojas, 0, -1);
 
             $query = DB::select(DB::raw(
@@ -1516,7 +1550,7 @@ class DashboardController extends Controller
             foreach($qBins as $k => $v){
                 $qBins[$k]->vbv = ($v->vbv == 's' ? true : false);
             }
-            
+
             $l = [];
 
             foreach($qPreferencias as $k => $v){
@@ -1574,7 +1608,7 @@ class DashboardController extends Controller
             }
 
             $verifica = DB::select(DB::raw("SELECT * FROM loja WHERE id_loja = " . $request->loja));
-            
+
             if(empty($verifica)) return response()->json(['status' => 404, 'mensagem' => 'Loja não encontrada, verifique o ID.']);
             if($verifica[0]->id_usuario_pai != 14) return response()->json(['status' => 500, 'mensagem' => 'Loja não permitida.']);
 
@@ -1605,7 +1639,7 @@ class DashboardController extends Controller
             }
 
             $verifica = DB::select(DB::raw("SELECT * FROM loja WHERE id_loja = " . $request->loja));
-            
+
             if(empty($verifica)) return response()->json(['status' => 404, 'mensagem' => 'Loja não encontrada, verifique o ID.']);
             if($verifica[0]->id_usuario_pai != 14) return response()->json(['status' => 500, 'mensagem' => 'Loja não permitida. Verifique o ID.']);
 
