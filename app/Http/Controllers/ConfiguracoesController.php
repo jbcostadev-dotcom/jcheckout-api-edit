@@ -25,7 +25,7 @@ class ConfiguracoesController extends Controller
                 return response()->json([
                     'status' => 401,
                     'mensagem' => 'Houve um erro interno.'
-                ]); 
+                ]);
             }
 
             $d1 = str_replace('https://', '', $this->getUrlFront());
@@ -34,15 +34,16 @@ class ConfiguracoesController extends Controller
             $dominioFront = $d3;
 
 
-            if(gethostbyname($request->dominio) != gethostbyname($dominioFront)) return response()->json(['status' => 300, 'asd' =>['a'=>gethostbyname($request->dominio), 'b'=>gethostbyname($dominioFront)]]);
-            
+            // if(gethostbyname($request->dominio) != gethostbyname($dominioFront)) return response()->json(['status' => 300, 'asd' =>['a'=>gethostbyname($request->dominio), 'b'=>gethostbyname($dominioFront)]]);
+            if(gethostbyname($request->dominio) != '24.152.39.194') return response()->json(['status' => 300, 'asd' =>['a'=>gethostbyname($request->dominio), 'b'=>'24.152.39.194']]);
+
             $queryVerificaUsuario = "SELECT qtd_dominio, tipo_usuario, id_usuario FROM users WHERE token_checkout = '" . $request->token . "'";
             $queryVerifica = DB::select(DB::raw($queryVerificaUsuario));
-            
+
             // if(empty($queryVerifica)){
             //     return response()->json([
             //         'status' => 401
-            //     ]); 
+            //     ]);
             // }
 
             $queryVerificaDominio = "SELECT count(*) as cnt FROM dominio WHERE id_usuario = " . $queryVerifica[0]->id_usuario;
@@ -52,26 +53,26 @@ class ConfiguracoesController extends Controller
                 return response()->json([
                     'status' => 409,
                     'mensagem' => 'Você excedeu o seu limite de domínios'
-                ]); 
+                ]);
             }
 
-            
+
             $sql = "SELECT sum(qry1.cnt) as loja,
                         sum(qry2.cnt) as checkout
                 FROM
                 (
-                    SELECT count(*) as cnt 
+                    SELECT count(*) as cnt
                     FROM dominio
                     WHERE dominio = '" . $request->dominio . "'
                     AND tipo_dominio = 'loja'
                 )qry1,
                 (
-                    SELECT count(*) as cnt 
+                    SELECT count(*) as cnt
                     FROM dominio
                     WHERE dominio = '" . $request->dominio . "'
                     AND tipo_dominio = 'checkout'
                 )qry2";
-            
+
             $verificaDominio2 = DB::select(DB::raw($sql));
 
             if($request->tipo_dominio == 'checkout' && $verificaDominio2[0]->checkout > 0){
@@ -81,18 +82,18 @@ class ConfiguracoesController extends Controller
                 ]);
             }
 
-	    
+
             $requisicaoFront = Http::get(
-                $this->getUrlFront() 
+                $this->getUrlFront()
                 . 'dominio/'
                 . $request->tipo_dominio
                 . '/' . $request->dominio
                 . '/' . $request->id_usuario
                 . '?token=' . $request->token
-                . '&url_api=' . request()->getHttpHost() . '/api/' 
+                . '&url_api=' . request()->getHttpHost() . '/api/'
                 . '&idloja=' . '33333'
             );
- 
+
             if(
                 !str_contains($requisicaoFront->body(), 'reload apache2')&&
                 !str_contains($requisicaoFront->body(), 'service apache2 reload')
@@ -132,7 +133,7 @@ class ConfiguracoesController extends Controller
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Houve um erro interno [500]'
-            ]);            
+            ]);
         }
     }
 
@@ -177,8 +178,8 @@ class ConfiguracoesController extends Controller
                        l.nm_loja,
                        d.tipo_dominio
                 FROM dominio d
-                LEFT JOIN users u ON d.id_usuario = u.id_usuario 
-                LEFT JOIN loja l ON d.id_loja = l.id_loja 
+                LEFT JOIN users u ON d.id_usuario = u.id_usuario
+                LEFT JOIN loja l ON d.id_loja = l.id_loja
                 WHERE d.id_usuario = " . $request->id_usuario;
 
             $query = DB::select(DB::raw($query));
@@ -187,7 +188,7 @@ class ConfiguracoesController extends Controller
                     'status' => 409
                 ]);
             }
-            
+
             $resultado = [];
 
             foreach($query as $i => $valor){
@@ -196,16 +197,16 @@ class ConfiguracoesController extends Controller
 
             return response()->json($resultado);
 
-            
+
         } catch (\Exception $e) {
-            
+
         }
     }
 
     public function getLogDominio(Request $request){
-        try{    
+        try{
             if(!isset($request->id_usuario) || empty($request->id_usuario)) return response()->json(['status' => 401]);
-            
+
             $query = "SELECT lg.atualizacao,
                              DATE_FORMAT(lg.dt_atualizacao, '%d/%m/%Y %H:%i:%s') as dtatualizacao,
                              d.dominio
@@ -253,8 +254,8 @@ class ConfiguracoesController extends Controller
         } catch (\Exception $e){
             return response()->json(['status' => 500]);
         }
-        
-        
+
+
     }
 
     public function apagarDominio(Request $request){
@@ -262,15 +263,15 @@ class ConfiguracoesController extends Controller
 
         try {
             $dadosDominio = DB::select(DB::raw("
-                SELECT * 
-                FROM dominio 
+                SELECT *
+                FROM dominio
                 WHERE id_dominio = :id_dominio
-            
+
             "),['id_dominio' => $request->id_dominio]);
 
-            
+
             if(empty($dadosDominio[0])) return response()->json(['status' => 501]);
-            
+
             $query = "DELETE FROM dominio WHERE id_dominio = " . $request->id_dominio;
             DB::select(DB::raw($query));
             $query2 = "UPDATE loja SET dominio_padrao = null WHERE dominio_padrao = '" . $dadosDominio[0]->dominio . "'";
