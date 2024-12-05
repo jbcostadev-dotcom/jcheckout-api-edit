@@ -2,15 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use DB;
-use App\Models\Sanctum\PersonalAccessToken;
 use App\Models\Sanctum\NewAccessToken;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Laravel\Sanctum\Sanctum;
-use Laravel\Sanctum\HasApiTokens;
+use App\Models\Sanctum\PersonalAccessToken;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class ConfiguracoesController extends Controller
@@ -28,14 +23,9 @@ class ConfiguracoesController extends Controller
                 ]);
             }
 
-            $d1 = str_replace('https://', '', $this->getUrlFront());
-            $d2 = str_replace('/api/', '', $d1);
-            $d3 = str_replace('/', '', $d2);
-            $dominioFront = $d3;
+            $frontend_project_ip = DB::table('rota_frontend')->value('ip');
 
-
-            // if(gethostbyname($request->dominio) != gethostbyname($dominioFront)) return response()->json(['status' => 300, 'asd' =>['a'=>gethostbyname($request->dominio), 'b'=>gethostbyname($dominioFront)]]);
-            if(gethostbyname($request->dominio) != '24.152.39.194') return response()->json(['status' => 300, 'asd' =>['a'=>gethostbyname($request->dominio), 'b'=>'24.152.39.194']]);
+            if (gethostbyname($request->dominio) != $frontend_project_ip) return response()->json(['status' => 300, 'asd' => ['a' => gethostbyname($request->dominio), 'b' => $frontend_project_ip]]);
 
             $queryVerificaUsuario = "SELECT qtd_dominio, tipo_usuario, id_usuario FROM users WHERE token_checkout = '" . $request->token . "'";
             $queryVerifica = DB::select(DB::raw($queryVerificaUsuario));
