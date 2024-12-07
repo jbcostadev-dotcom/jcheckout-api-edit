@@ -709,7 +709,7 @@ class DashboardController extends Controller
     {
         try {
             $q = $this->helper()->query("
-                SELECT resumo_aberto, ultimo_dia, colher_senha, colher_facebook
+                SELECT *
                 FROM checkout_preferencias
                 WHERE id_loja = :id_loja
             ", ['id_loja' => $request->id_loja]);
@@ -718,17 +718,20 @@ class DashboardController extends Controller
                 'resumo_aberto' => false,
                 'ultimo_dia' => false,
                 'colher_senha' => false,
-                'colher_facebook' => false
+                'colher_facebook' => false,
+                'redirect_link' => null,
             ]);
 
             return response()->json([
                 'resumo_aberto' => ($q[0]->resumo_aberto == 's' ? true : false),
                 'ultimo_dia' => ($q[0]->ultimo_dia == 's' ? true : false),
                 'colher_senha' => ($q[0]->colher_senha == 's' ? true : false),
-                'colher_facebook' => ($q[0]->colher_facebook == 's' ? true : false)
+                'colher_facebook' => ($q[0]->colher_facebook == 's' ? true : false),
+                'redirect_link' => $q[0]->redirect_link,
             ]);
 
         } catch (\Exception $e) {
+            return $e;
             return response()->json(['status' => 500]);
         }
     }
