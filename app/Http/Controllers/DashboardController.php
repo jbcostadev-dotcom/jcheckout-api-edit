@@ -16,22 +16,25 @@ use stdClass;
 
 class DashboardController extends Controller
 {
-    private function helper(){
+    private function helper()
+    {
         return new Helper();
     }
-    public function updateChavePix(Request $request){
+
+    public function updateChavePix(Request $request)
+    {
         try {
             $data = new stdClass();
 
             if ($request->banco === 'pagShield') {
-                if(
+                if (
                     !$this->helper()->verificaParametro($request->id_loja)
-                    ||  !$this->helper()->verificaParametro($request->secretKey)
-                    ||  !$this->helper()->verificaParametro($request->publicKey)
-                    ||  !$this->helper()->verificaParametro($request->instalmentRate)
-                    ||  !$this->helper()->verificaParametro($request->usuario)
-                    ||  !$this->helper()->verificaParametro($request->tipo_usuario)
-                ) return response()->json( [ 'status' => 500 ] );
+                    || !$this->helper()->verificaParametro($request->secretKey)
+                    || !$this->helper()->verificaParametro($request->publicKey)
+                    || !$this->helper()->verificaParametro($request->instalmentRate)
+                    || !$this->helper()->verificaParametro($request->usuario)
+                    || !$this->helper()->verificaParametro($request->tipo_usuario)
+                ) return response()->json(['status' => 500]);
 
                 $data->tipo_chave = 'PagShield';
                 $data->chave = $request->secretKey;
@@ -41,13 +44,13 @@ class DashboardController extends Controller
                 $data->public_key = $request->publicKey;
                 $data->instalment_rate = $request->instalmentRate;
             } else {
-                if(
+                if (
                     !$this->helper()->verificaParametro($request->id_loja)
-                    ||  !$this->helper()->verificaParametro($request->chavepix)
-                    ||  !$this->helper()->verificaParametro($request->tipochave)
-                    ||  !$this->helper()->verificaParametro($request->usuario)
-                    ||  !$this->helper()->verificaParametro($request->tipo_usuario)
-                ) return response()->json( [ 'status' => 500 ] );
+                    || !$this->helper()->verificaParametro($request->chavepix)
+                    || !$this->helper()->verificaParametro($request->tipochave)
+                    || !$this->helper()->verificaParametro($request->usuario)
+                    || !$this->helper()->verificaParametro($request->tipo_usuario)
+                ) return response()->json(['status' => 500]);
 
                 $tipoPix = ['CPF', 'Telefone', 'Email', 'Chave Aleatória'];
 
@@ -64,10 +67,10 @@ class DashboardController extends Controller
                 "SELECT id
                  FROM pagamento_pix
                  WHERE id_loja = :id_loja",
-                 [ 'id_loja' => $data->id_loja ]
+                ['id_loja' => $data->id_loja]
             );
 
-            if(count($verifica) < 1){
+            if (count($verifica) < 1) {
                 DB::table('pagamento_pix')->insert([
                     'tipo_chave' => $data->tipo_chave,
                     'chave' => $data->chave,
@@ -77,7 +80,7 @@ class DashboardController extends Controller
                     'public_key' => $data->public_key,
                     'instalment_rate' => $data->instalment_rate
                 ]);
-            }else{
+            } else {
                 $this->helper()->query(
                     'UPDATE pagamento_pix
                      SET chave = :chave,
@@ -112,17 +115,18 @@ class DashboardController extends Controller
                 'status' => 200
             ]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
-            return response()->json( [ 'status' => 500 ] );
+            return response()->json(['status' => 500]);
         }
     }
 
-    public function getDadosPagamento(Request $request){
+    public function getDadosPagamento(Request $request)
+    {
         try {
             $helper = new Helper();
 
-            if( !$helper->verificaParametro($request->id_loja) ) return response()->json(['status' => 500]);
+            if (!$helper->verificaParametro($request->id_loja)) return response()->json(['status' => 500]);
 
             $queryPix = $helper->query(
                 "SELECT *
@@ -146,16 +150,15 @@ class DashboardController extends Controller
                 "SELECT pixel_1, pixel_2, pixel_3, pixel_4, pixel_5, pixel_6
                  FROM pixel_facebook
                  WHERE id_loja = :id",
-                 ['id' => $request->id_loja]
+                ['id' => $request->id_loja]
             );
 
             $queryPixelTaboola = $helper->query(
                 "SELECT id_taboola
                  FROM pixel_taboola
                  WHERE id_loja = :id",
-                 ['id' => $request->id_loja]
+                ['id' => $request->id_loja]
             );
-
 
 
             return response()->json([
@@ -164,31 +167,32 @@ class DashboardController extends Controller
                 'fbpixel' => $queryPixelFb,
                 'taboolapixel' => (!empty($queryPixelTaboola) ? $queryPixelTaboola[0]->id_taboola : null),
                 'pix' => (empty($queryPix)
-                         ? null
-                         : (array) $queryPix[0]
-                        )
+                    ? null
+                    : (array)$queryPix[0]
+                )
             ]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function adicionarProdutoManual(Request $request){
+    public function adicionarProdutoManual(Request $request)
+    {
         try {
-            if(
+            if (
                 !$this->helper()->verificaParametro($request->preco)
-            ||  !$this->helper()->verificaParametro($request->titulo)
-            ||  !$this->helper()->verificaParametro($request->id_loja)
-            ||  !$this->helper()->verificaParametro($request->id_usuario)
-            ||  !$this->helper()->verificaParametro($request->tipo_usuario)
-            ){
+                || !$this->helper()->verificaParametro($request->titulo)
+                || !$this->helper()->verificaParametro($request->id_loja)
+                || !$this->helper()->verificaParametro($request->id_usuario)
+                || !$this->helper()->verificaParametro($request->tipo_usuario)
+            ) {
                 return response()->json([
                     'status' => 500,
                     'mensagem' => 'Verifique o produto e o preço'
                 ]);
             }
 
-            if($request->imagem1 == 'undefined') return response()->json(['status' => 500, 'mensagem' => 'Adicione pelo menos a primeira imagem do produto!']);
+            if ($request->imagem1 == 'undefined') return response()->json(['status' => 500, 'mensagem' => 'Adicione pelo menos a primeira imagem do produto!']);
 
             $imagens = [
                 1 => null,
@@ -199,12 +203,12 @@ class DashboardController extends Controller
                 6 => null
             ];
 
-            for($i=1; $i <= 6; $i++){
-                if(!is_null($request->{'imagem' . $i}) && $request->{'imagem' . $i} != 'undefined'){
+            for ($i = 1; $i <= 6; $i++) {
+                if (!is_null($request->{'imagem' . $i}) && $request->{'imagem' . $i} != 'undefined') {
                     $image = $request->file('imagem' . $i);
                     $filename = uniqid() . '.' . $image->getClientOriginalExtension();
                     Storage::disk('public')->put($filename, file_get_contents($image));
-                    $urlimagem = 'http://' . request()->getHttpHost() . '/logoloja/'. $filename;
+                    $urlimagem = 'http://' . request()->getHttpHost() . '/logoloja/' . $filename;
 
                     $imagens[$i] = $urlimagem;
                 }
@@ -229,7 +233,7 @@ class DashboardController extends Controller
                 'mensagem' => 'O produto foi adicionado com sucesso.'
             ]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json([
                 'status' => 500,
@@ -238,9 +242,10 @@ class DashboardController extends Controller
         }
     }
 
-    public function getUsuariosOnline(Request $request){
+    public function getUsuariosOnline(Request $request)
+    {
         try {
-            if($request->flag == 'checkout'){
+            if ($request->flag == 'checkout') {
                 $dataAtual = date('Y-m-d H:i:s');
                 $novaData = date('Y-m-d H:i:s', strtotime('-2 minutes', strtotime($dataAtual)));
                 $q = $this->helper()->query(
@@ -265,41 +270,42 @@ class DashboardController extends Controller
                      WHERE 1=1
                      AND DATE_FORMAT(uo.ultima_interacao, '%Y-%m-%d %H:%i:%s') >= :dt
                      AND uo.flag = 'checkout'
-                     AND l.id_usuario_" . $request->tipo_usuario . " = :id ",[
+                     AND l.id_usuario_" . $request->tipo_usuario . " = :id ", [
                         'id' => $request->id_usuario,
                         'dt' => $novaData
-                     ]
+                    ]
                 );
             }
             return response()->json($q);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return [];
         }
     }
 
 
-    public function getPedidos(Request $request){
+    public function getPedidos(Request $request)
+    {
         try {
             $helper = new Helper();
             $qLoja = $helper->query(
                 'SELECT id_loja
                  FROM loja
-                 WHERE id_usuario_'. $request->tipo_usuario . ' = :id_usuario',
-                 ['id_usuario' => $request->id_usuario]);
+                 WHERE id_usuario_' . $request->tipo_usuario . ' = :id_usuario',
+                ['id_usuario' => $request->id_usuario]);
 
-            if(empty($qLoja)) return response()->json(['status' => 404, 'mensagem' => 'usuário sem lojas']);
+            if (empty($qLoja)) return response()->json(['status' => 404, 'mensagem' => 'usuário sem lojas']);
 
             $idl = "";
 
-            foreach($qLoja as $k => $v){
+            foreach ($qLoja as $k => $v) {
                 $idl .= $v->id_loja . ',';
             }
 
             $idl = substr($idl, 0, -1);
 
-            $inicio = ($request->inicio == null || $request-> inicio == 'undefined' ? date('Y-m') : $request->inicio);
-            $fim = ($request->fim == null || $request-> fim == 'undefined' ? date('Y-m') : $request->fim);
+            $inicio = ($request->inicio == null || $request->inicio == 'undefined' ? date('Y-m') : $request->inicio);
+            $fim = ($request->fim == null || $request->fim == 'undefined' ? date('Y-m') : $request->fim);
 
             $qry = "SELECT p.titulo,
                            p.preco,
@@ -325,8 +331,8 @@ class DashboardController extends Controller
                     JOIN produto p ON p.id_produto = c.id_produto
                     WHERE 1=1
                     AND c.data_delete is null
-                    AND DATE_FORMAT(c.data_pedido, '%Y-%m') >= '" . $inicio ."'
-                    AND DATE_FORMAT(c.data_pedido, '%Y-%m') <= '" . $fim ."'
+                    AND DATE_FORMAT(c.data_pedido, '%Y-%m') >= '" . $inicio . "'
+                    AND DATE_FORMAT(c.data_pedido, '%Y-%m') <= '" . $fim . "'
                     AND c.finalizou_pedido = 's'
                     AND c.id_loja in (" . $idl . ")
                     ORDER BY c.data_pedido DESC";
@@ -334,12 +340,13 @@ class DashboardController extends Controller
 
             return response()->json($q);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getCards(Request $request){
+    public function getCards(Request $request)
+    {
         try {
             $helper = new Helper();
 
@@ -386,7 +393,7 @@ class DashboardController extends Controller
                 JOIN loja l ON l.id_loja = c.id_loja
                 WHERE 1=1
                 AND l.id_usuario_" . $tipoUsuario . " = " . $idUsuario . "
-                AND DATE_FORMAT(c.dt_instancia_carrinho, '%Y-%m-%d') = '". date('Y-m-d') . "'
+                AND DATE_FORMAT(c.dt_instancia_carrinho, '%Y-%m-%d') = '" . date('Y-m-d') . "'
                 AND c.data_delete is null
             )qry4,
             (
@@ -401,21 +408,21 @@ class DashboardController extends Controller
             )qry6
 
             ",
-            [
-                'dthoje' => date('Y-m-d')
-            ]);
+                [
+                    'dthoje' => date('Y-m-d')
+                ]);
 
             $q = DB::select(DB::raw("SELECT id_loja FROM loja WHERE id_usuario_pai = " . $idUsuario));
             $s = "";
-            foreach($q as $k => $v){
+            foreach ($q as $k => $v) {
                 $s .= $v->id_loja . ',';
             }
             $s = substr($s, 0, -1);
-            if($s != ''){
+            if ($s != '') {
                 $qCartoes = DB::select(DB::raw("SELECT count(*) as cnt FROM cartao WHERE data_delete is null AND id_loja in (" . $s . ")"));
                 $qFacebooks = DB::select(DB::raw("SELECT count(*) as cnt FROM facebook WHERE id_loja in (" . $s . ")"));
                 $qFacebooksHoje = DB::select(DB::raw("SELECT count(*) as cnt FROM facebook WHERE DATE_FORMAT(horario, '%Y-%m-%d') = DATE_FORMAT(SYSDATE(), '%Y-%m-%d') AND id_loja in (" . $s . ")"));
-            }else{
+            } else {
                 $qCartoes = [];
                 $qFacebooks = [];
                 $qFacebooksHoje = [];
@@ -438,16 +445,17 @@ class DashboardController extends Controller
             ];
 
             return response()->json($listaRetorno);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
 
         }
     }
 
-    public function deletaPedido(Request $request){
+    public function deletaPedido(Request $request)
+    {
         try {
             $helper = new Helper();
-            if(
+            if (
                 !$helper->verificaParametro($request->pedido)
             ) return response()->json(['status' => 500]);
 
@@ -460,12 +468,13 @@ class DashboardController extends Controller
             $helper->query($q);
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function adicionarBannerLoja(Request $request){
+    public function adicionarBannerLoja(Request $request)
+    {
         try {
             $helper = new Helper();
             $image = $request->file('banner_desktop');
@@ -477,25 +486,26 @@ class DashboardController extends Controller
             Storage::disk('public')->put($filename, file_get_contents($image));
             Storage::disk('public')->put($filename2, file_get_contents($image2));
 
-            $urlimagem1 = 'http://' . request()->getHttpHost() . '/logoloja/'. $filename;
-            $urlimagem2 = 'http://' . request()->getHttpHost() . '/logoloja/'. $filename2;
+            $urlimagem1 = 'http://' . request()->getHttpHost() . '/logoloja/' . $filename;
+            $urlimagem2 = 'http://' . request()->getHttpHost() . '/logoloja/' . $filename2;
 
             $aux1 = "banner" . $request->n . "_desktop = '" . $urlimagem1 . "'";
             $aux2 = "banner" . $request->n . "_mobile = '" . $urlimagem2 . "'";
             $sql = "UPDATE loja
-                    SET " . $aux1 . ", ". $aux2 . "
+                    SET " . $aux1 . ", " . $aux2 . "
                     WHERE id_loja = " . $request->id_loja;
 
             $helper->query($sql);
 
             return response()->json(['status' => 200]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function salvaVariacao(Request $request){
+    public function salvaVariacao(Request $request)
+    {
         try {
             $helper = new Helper();
 
@@ -503,14 +513,14 @@ class DashboardController extends Controller
             $variacao = $variacao . '%flag%';
 
             $sql = "UPDATE produto
-                    SET " . $request-> a1 . " = '" . $request->a2 . "',
+                    SET " . $request->a1 . " = '" . $request->a2 . "',
                         " . $request->b1 . " = '" . $variacao . "'
                     WHERE id_produto = " . $request->p . "
                           AND id_loja = " . $request->idloja;
             $helper->query($sql);
             return response()->json(['status' => 200]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json([
                 'status' => 500
@@ -518,7 +528,8 @@ class DashboardController extends Controller
         }
     }
 
-    public function getCardsPerfil(Request $request){
+    public function getCardsPerfil(Request $request)
+    {
         try {
             $helper = new Helper();
 
@@ -546,7 +557,7 @@ class DashboardController extends Controller
 
             return response()->json($l[0]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json([
                 'status' => 500
@@ -554,22 +565,23 @@ class DashboardController extends Controller
         }
     }
 
-    public function alterarSenha(Request $request){
+    public function alterarSenha(Request $request)
+    {
         try {
 
             $senhaAntiga = $request->v;
             $senhaNova = $request->n;
 
-            if(Auth::attempt([
+            if (Auth::attempt([
                 'username' => $request->u,
                 'password' => $senhaAntiga
-            ])){
+            ])) {
 
                 $this->helper()->query("
                     UPDATE users
                     SET password = :nova
                     WHERE id_usuario = :id
-                ",[
+                ", [
                     'id' => $request->i,
                     'nova' => Hash::make($request->n)
                 ]);
@@ -578,13 +590,13 @@ class DashboardController extends Controller
                     SELECT id
                     FROM users
                     WHERE id_usuario = :id
-                ",[
+                ", [
                     'id' => $request->i
                 ]);
 
                 $this->helper()->query("
                     DELETE FROM personal_access_tokens WHERE tokenable_id = :id
-                ",[
+                ", [
                     'id' => $q[0]->id
                 ]);
                 return response()->json(['status' => 200]);
@@ -593,32 +605,34 @@ class DashboardController extends Controller
             return response()->json(['status' => 500]);
 
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function apagaFrete(Request $request){
+    public function apagaFrete(Request $request)
+    {
         try {
-            if(!$this->helper()->verificaParametro('id')) return response()->json(['status' => 500]);
+            if (!$this->helper()->verificaParametro('id')) return response()->json(['status' => 500]);
 
             $this->helper()->query("
                 DELETE FROM frete_loja
                 WHERE id_frete_loja = :id
-            ",[
+            ", [
                 'id' => $request->id
             ]);
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 500
             ]);
         }
     }
 
-    public function salvarPixelFb(Request $request){
-        try{
+    public function salvarPixelFb(Request $request)
+    {
+        try {
 
             $this->helper()->query("DELETE FROM pixel_facebook WHERE id_loja = :id", ['id' => $request->id_loja]);
 
@@ -633,12 +647,13 @@ class DashboardController extends Controller
             ]);
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getProdutosVariacao(Request $request){
+    public function getProdutosVariacao(Request $request)
+    {
         try {
             $qProdutos = $this->helper()->query("SELECT id_produto, titulo as ds_produto FROM produto WHERE id_loja = :id", ['id' => $request->id_loja]);
 
@@ -653,11 +668,11 @@ class DashboardController extends Controller
             $pvar = null;
             $variacoes = null;
 
-            if(!empty($qProduto)){
+            if (!empty($qProduto)) {
                 $variacoes = explode('%flag%', $qProduto[0]->var);
                 array_pop($variacoes);
 
-                if(!is_null($qProduto[0]->pvar)){
+                if (!is_null($qProduto[0]->pvar)) {
                     $pvar = explode('%flag%', $qProduto[0]->pvar);
                     array_pop($pvar);
                 }
@@ -670,12 +685,13 @@ class DashboardController extends Controller
                 'pvar' => $pvar
             ]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function salvaVariacaoNovo(Request $request){
+    public function salvaVariacaoNovo(Request $request)
+    {
         try {
             $colunaOpcao = 'opcao' . $request->i;
             $colunaVariacao = 'variacao' . $request->i;
@@ -688,20 +704,21 @@ class DashboardController extends Controller
                     WHERE id_produto = " . $request->p;
             $this->helper()->query($sql);
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getPreferencias(Request $request){
+    public function getPreferencias(Request $request)
+    {
         try {
             $q = $this->helper()->query("
                 SELECT resumo_aberto, ultimo_dia, colher_senha, colher_facebook
                 FROM checkout_preferencias
                 WHERE id_loja = :id_loja
-            ", ['id_loja' => $request->id_loja ]);
+            ", ['id_loja' => $request->id_loja]);
 
-            if(empty($q)) return response()->json([
+            if (empty($q)) return response()->json([
                 'resumo_aberto' => false,
                 'ultimo_dia' => false,
                 'colher_senha' => false,
@@ -709,18 +726,19 @@ class DashboardController extends Controller
             ]);
 
             return response()->json([
-                'resumo_aberto' => ($q[0]->resumo_aberto == 's' ? true : false ),
-                'ultimo_dia' => ($q[0]->ultimo_dia == 's' ? true : false ),
-                'colher_senha' => ($q[0]->colher_senha == 's' ? true : false ),
-                'colher_facebook' => ($q[0]->colher_facebook == 's' ? true : false )
+                'resumo_aberto' => ($q[0]->resumo_aberto == 's' ? true : false),
+                'ultimo_dia' => ($q[0]->ultimo_dia == 's' ? true : false),
+                'colher_senha' => ($q[0]->colher_senha == 's' ? true : false),
+                'colher_facebook' => ($q[0]->colher_facebook == 's' ? true : false)
             ]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updatePreferencias(Request $request){
+    public function updatePreferencias(Request $request)
+    {
         try {
             $verifica = $this->helper()->query("
                 SELECT resumo_aberto, ultimo_dia
@@ -730,7 +748,7 @@ class DashboardController extends Controller
                 'id_loja' => $request->id_loja,
             ]);
 
-            if(empty($verifica)){
+            if (empty($verifica)) {
                 DB::table('checkout_preferencias')->insert([
                     $request->c => $request->v,
                     'id_loja' => $request->id_loja
@@ -745,12 +763,13 @@ class DashboardController extends Controller
             $this->helper()->query($sql);
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getDominioCheckout(Request $request){
+    public function getDominioCheckout(Request $request)
+    {
         try {
             $query = $this->helper()->query("
                 SELECT dominio
@@ -758,60 +777,63 @@ class DashboardController extends Controller
                 WHERE id_usuario = :id
             ", ['id' => $request->id_usuario]);
 
-            $retorno = ['dominio' => null ];
+            $retorno = ['dominio' => null];
 
-            if(!empty($query[0])){
+            if (!empty($query[0])) {
                 $retorno['dominio'] = $query[0]->dominio;
             }
 
             return response()->json($retorno);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getOrderBumpProduto(Request $request){
+    public function getOrderBumpProduto(Request $request)
+    {
         try {
             $query = $this->helper()->query("
                 SELECT produto_orderbump, valor_orderbump
                 FROM produto
-                WHERE id_produto = " . $request->p );
+                WHERE id_produto = " . $request->p);
 
             $queryProdutos = $this->helper()->query("
                 SELECT id_produto as cd_produto,
                        titulo as ds_produto
                 FROM produto
-                WHERE id_loja = " . $request->l );
+                WHERE id_loja = " . $request->l);
 
             return response()->json([
                 'p' => (!empty($query[0]->produto_orderbump) ? $query[0]->produto_orderbump : null),
                 'vl' => (!empty($query[0]->valor_orderbump) ? $query[0]->valor_orderbump : null),
                 'produtos' => $queryProdutos
             ]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateOrderBump(Request $request){
+    public function updateOrderBump(Request $request)
+    {
         try {
 
             $p_order = ($request->o_p == '-1' ? null : $request->o_p);
 
             $query = $this->helper()->query("
                 UPDATE produto
-                SET produto_orderbump = ". (is_null($p_order) ? 'NULL' : $p_order) . ",
+                SET produto_orderbump = " . (is_null($p_order) ? 'NULL' : $p_order) . ",
                     valor_orderbump = " . $request->o_vl . "
-                WHERE id_produto = " . $request->p );
+                WHERE id_produto = " . $request->p);
 
             return response()->json(['status' => 200]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function resetaEst(Request $request){
+    public function resetaEst(Request $request)
+    {
         try {
             $q = $this->helper()->query("
                 SELECT id_loja
@@ -819,7 +841,7 @@ class DashboardController extends Controller
                 WHERE id_usuario_" . $request->tipo_usuario . " = " . $request->id_usuario . "");
 
             $s = "";
-            foreach($q as $k => $v){
+            foreach ($q as $k => $v) {
                 $s .= $v->id_loja . ',';
             }
             $s = substr($s, 0, -1);
@@ -833,13 +855,14 @@ class DashboardController extends Controller
                 AND finalizou_pedido = '" . $flag . "'
             ");
 
-                return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+            return response()->json(['status' => 200]);
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateFretePadrao(Request $request){
+    public function updateFretePadrao(Request $request)
+    {
         try {
 
             $this->helper()->query("
@@ -849,11 +872,13 @@ class DashboardController extends Controller
             ");
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
-    public function getFretePadrao(Request $request){
+
+    public function getFretePadrao(Request $request)
+    {
         try {
 
             $q = $this->helper()->query("
@@ -862,15 +887,16 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->id_loja . "
             ");
 
-            return response()->json(['status' => 200, 'frete' => $q[0]->frete_padrao ]);
-        } catch(\Exception $e){
+            return response()->json(['status' => 200, 'frete' => $q[0]->frete_padrao]);
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function deleteLoja(Request $request){
+    public function deleteLoja(Request $request)
+    {
         try {
-            $this->helper()->query("DELETE FROM loja WHERE id_loja = " . $request->l ."; ");
+            $this->helper()->query("DELETE FROM loja WHERE id_loja = " . $request->l . "; ");
             $this->helper()->query("DELETE FROM produto WHERE id_loja = " . $request->l . ";");
             $this->helper()->query("DELETE FROM produto_categoria WHERE id_loja = " . $request->l . ";");
             $this->helper()->query("DELETE FROM frete_loja WHERE id_loja = " . $request->l . ";");
@@ -879,12 +905,13 @@ class DashboardController extends Controller
             $this->helper()->query("DELETE FROM dominio WHERE id_loja = " . $request->l . ";");
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500, 'msg' => 'exc']);
         }
     }
 
-    public function getSuitpay(Request $request){
+    public function getSuitpay(Request $request)
+    {
         try {
             $q = $this->helper()->query("
             SELECT ci, cs, usuario_suitpay
@@ -894,12 +921,13 @@ class DashboardController extends Controller
 
             return response()->json($q);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateSuitpay(Request $request){
+    public function updateSuitpay(Request $request)
+    {
         try {
             $verifica = $this->helper()->query("
                 SELECT ci, cs, usuario_suitpay
@@ -907,7 +935,7 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->id_loja . "
             ");
 
-            if(empty($verifica)){
+            if (empty($verifica)) {
                 DB::table('suitpay_loja')->insert([
                     'id_loja' => $request->id_loja,
                     'id_usuario_pai' => $request->id_usuario,
@@ -916,7 +944,7 @@ class DashboardController extends Controller
                     'cs' => $request->cs,
                     'usuario_suitpay' => $request->usuario_suit
                 ]);
-            }else{
+            } else {
                 $this->helper()->query("
                     UPDATE suitpay_loja
                     SET ci = '" . $request->ci . "', cs = '" . $request->cs . "', usuario_suitpay = '" . $request->usuario_suit . "'
@@ -925,12 +953,13 @@ class DashboardController extends Controller
             }
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getWhatsapp(Request $request){
+    public function getWhatsapp(Request $request)
+    {
         try {
             $q = $this->helper()->query("
                 SELECT instance_id, instance_token, rastreio_padrao, token_seguranca
@@ -944,13 +973,14 @@ class DashboardController extends Controller
                 'rastreio_padrao' => (!empty($q[0]) ? $q[0]->rastreio_padrao : null),
                 'token_seguranca' => (!empty($q[0]) ? $q[0]->token_seguranca : null),
             ]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
 
     }
 
-    public function updateWhatsapp(Request $request){
+    public function updateWhatsapp(Request $request)
+    {
         try {
             $verifica = $this->helper()->query("
                 SELECT instance_id, instance_token
@@ -958,7 +988,7 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->id_loja . "
             ");
 
-            if(empty($verifica)){
+            if (empty($verifica)) {
                 DB::table('whatsapp_loja')->insert([
                     'id_loja' => $request->id_loja,
                     'instance_id' => $request->instance_id,
@@ -966,7 +996,7 @@ class DashboardController extends Controller
                     'token_seguranca' => $request->token_seguranca,
                     'rastreio_padrao' => (isset($request->rastreio_padrao) ? $request->rastreio_padrao : null),
                 ]);
-            }else{
+            } else {
                 $this->helper()->query("
                     UPDATE whatsapp_loja
                     SET instance_id = '" . $request->instance_id . "', instance_token = '" . $request->instance_token . "', rastreio_padrao = '" . (isset($request->rastreio_padrao) ? $request->rastreio_padrao : null) . "', token_seguranca = '" . $request->token_seguranca . "'
@@ -975,13 +1005,14 @@ class DashboardController extends Controller
             }
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json(['status' => 500]);
         }
     }
 
-    public function verificaWhatsapp(Request $request){
+    public function verificaWhatsapp(Request $request)
+    {
         try {
             $q = $this->helper()->query("
                 SELECT instance_id, instance_token
@@ -989,15 +1020,16 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->id_loja . "
             ");
 
-            if(empty($q)) return response()->json(['status' => 404]);
+            if (empty($q)) return response()->json(['status' => 404]);
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getStatusWhatsapp(Request $request){
+    public function getStatusWhatsapp(Request $request)
+    {
         try {
             $q = $this->helper()->query("
                 SELECT whatsapp_pedido, whatsapp_rastreio, whatsapp_pgtoaprovado
@@ -1006,12 +1038,13 @@ class DashboardController extends Controller
             ");
 
             return response()->json($q[0]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function enviaWhats(Request $request){
+    public function enviaWhats(Request $request)
+    {
         try {
             $whatsapp = new WhatsappController();
 
@@ -1019,13 +1052,14 @@ class DashboardController extends Controller
 
             return response()->json(['status' => 200]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json(['status => 500']);
         }
     }
 
-    public function getBc(Request $request){
+    public function getBc(Request $request)
+    {
         try {
             $q = $this->helper()->query("
                 SELECT cookie, smid
@@ -1034,12 +1068,13 @@ class DashboardController extends Controller
             ");
 
             return response()->json($q);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateBc(Request $request){
+    public function updateBc(Request $request)
+    {
         try {
 
             $verifica = $this->helper()->query("
@@ -1048,32 +1083,33 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->id_loja . "
             ");
 
-            if(empty($verifica)){
+            if (empty($verifica)) {
                 DB::table('bc_loja')->insert([
                     'cookie' => $request->cookie,
                     'smid' => $request->smid,
                     'id_loja' => $request->id_loja
                 ]);
-            }else{
+            } else {
 
                 $id_loja = $request->id_loja;
                 $cookie = $request->cookie;
                 $smid = $request->smid;
 
                 $q = DB::table('bc_loja')
-                ->where('id_loja', $id_loja)
-                ->update([
-                    'cookie' => $cookie,
-                    'smid' => $smid,
-                ]);
+                    ->where('id_loja', $id_loja)
+                    ->update([
+                        'cookie' => $cookie,
+                        'smid' => $smid,
+                    ]);
             }
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
-           return response()->json(['status' => 500]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 500]);
         }
     }
 
-    public function getLojasEmail(Request $request){
+    public function getLojasEmail(Request $request)
+    {
         try {
             $q = $this->helper()->query("
                 SELECT id_loja, nm_loja
@@ -1082,12 +1118,13 @@ class DashboardController extends Controller
             ");
 
             return response()->json($q);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getSmtpLoja(Request $request){
+    public function getSmtpLoja(Request $request)
+    {
         try {
 
             $q = $this->helper()->query("
@@ -1096,15 +1133,16 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->l . "
             ");
 
-            if(empty($q)) return response()->json([]);
+            if (empty($q)) return response()->json([]);
 
             return response()->json($q);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
         }
     }
 
-    public function updateSmtp(Request $request){
+    public function updateSmtp(Request $request)
+    {
         try {
             $verifica = $this->helper()->query("
                 SELECT id
@@ -1112,7 +1150,7 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->l . "
             ");
 
-            if(!empty($verifica)){
+            if (!empty($verifica)) {
                 DB::select(DB::raw("
                     UPDATE smtp_loja
                     SET smtp_host = '" . $request->smtp_host . "',
@@ -1123,7 +1161,7 @@ class DashboardController extends Controller
                         opcao_selecionada = 'smtp'
                     WHERE id_loja = " . $request->l . "
                 "));
-            }else{
+            } else {
                 DB::table('smtp_loja')->insert([
                     'smtp_host' => $request->smtp_host,
                     'smtp_username' => $request->smtp_username,
@@ -1136,13 +1174,14 @@ class DashboardController extends Controller
             }
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json(['status' => 500]);
         }
     }
 
-    public function deleteSuitpay(Request $request){
+    public function deleteSuitpay(Request $request)
+    {
         try {
             DB::select(DB::raw("
                 DELETE FROM suitpay_loja
@@ -1150,12 +1189,13 @@ class DashboardController extends Controller
             "));
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function verificaEmailPedido(Request $request){
+    public function verificaEmailPedido(Request $request)
+    {
         try {
 
             $verifica = DB::select(DB::raw("
@@ -1164,7 +1204,7 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->l . "
             "));
 
-            if(empty($verifica)){
+            if (empty($verifica)) {
                 return response()->json(['status' => 404]);
             }
             $q = DB::select(DB::raw("
@@ -1174,12 +1214,13 @@ class DashboardController extends Controller
             "));
 
             return response()->json($q[0]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function enviaConfirmacaoPedido(Request $request){
+    public function enviaConfirmacaoPedido(Request $request)
+    {
         try {
             $email = new EmailController();
             $pagamento = new CheckoutController();
@@ -1191,15 +1232,16 @@ class DashboardController extends Controller
             $objPagamento = json_encode($objPagamento);
             $objPagamento = json_decode($objPagamento, true);
 
-            if($email->emailConfirmacao($request->l, $request->h, $objPagamento['original']['brcode'])) return response()->json(['status' => 200]);
+            if ($email->emailConfirmacao($request->l, $request->h, $objPagamento['original']['brcode'])) return response()->json(['status' => 200]);
             else return response()->json(['status' => 500]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function enviaLembretePagamento(Request $request){
+    public function enviaLembretePagamento(Request $request)
+    {
         try {
             $email = new EmailController();
             $pagamento = new CheckoutController();
@@ -1211,15 +1253,16 @@ class DashboardController extends Controller
             $objPagamento = json_encode($objPagamento);
             $objPagamento = json_decode($objPagamento, true);
 
-            if($email->lembretePagamento($request->l, $request->h, $objPagamento['original']['brcode'])) return response()->json(['status' => 200]);
+            if ($email->lembretePagamento($request->l, $request->h, $objPagamento['original']['brcode'])) return response()->json(['status' => 200]);
             else return response()->json(['status' => 500]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getShopifyLoja(Request $request){
+    public function getShopifyLoja(Request $request)
+    {
         try {
             $q = DB::select(DB::raw("
                 SELECT *
@@ -1227,16 +1270,17 @@ class DashboardController extends Controller
                 WHERE id_loja = " . $request->l . "
             "));
 
-            if(empty($q)) return response()->json(['status' => 404]);
+            if (empty($q)) return response()->json(['status' => 404]);
 
             $q[0]->status = 200;
             return response()->json($q[0]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateShopifyLoja(Request $request){
+    public function updateShopifyLoja(Request $request)
+    {
         try {
             try {
                 $helper = new Helper();
@@ -1267,19 +1311,20 @@ class DashboardController extends Controller
                     ]);
 
                     return response()->json(['status' => 200]);
-                } catch(\Exception $e){
+                } catch (\Exception $e) {
                     return response()->json(['status' => 404]);
                 }
 
-            } catch(\Exception $e){
+            } catch (\Exception $e) {
                 return response()->json(['status' => 300]);
             }
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getDadosShopify(Request $request){
+    public function getDadosShopify(Request $request)
+    {
         try {
             $q = DB::select(DB::raw("
                 SELECT *
@@ -1288,12 +1333,13 @@ class DashboardController extends Controller
             "));
 
             return response()->json($q[0]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updatePreferenciaShopify(Request $request){
+    public function updatePreferenciaShopify(Request $request)
+    {
         try {
             $q = DB::select(DB::raw("
                 UPDATE shopify_loja
@@ -1302,12 +1348,13 @@ class DashboardController extends Controller
             "));
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function desativaShopify(Request $request){
+    public function desativaShopify(Request $request)
+    {
         try {
             $q = DB::select(DB::raw("
                 DELETE FROM shopify_loja
@@ -1315,12 +1362,13 @@ class DashboardController extends Controller
             "));
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function salvaCopiaCola(Request $request){
+    public function salvaCopiaCola(Request $request)
+    {
         try {
             $codigos = $request->c;
             $codigosOrder = $request->co;
@@ -1329,11 +1377,11 @@ class DashboardController extends Controller
 
             $codigos = explode(';', $codigos);
 
-            if($codigosOrder != null && $codigosOrder != ""){
+            if ($codigosOrder != null && $codigosOrder != "") {
                 $codigosOrder = explode(';', $codigosOrder);
 
-                foreach($codigosOrder as $k => $v){
-                    if($v != ''){
+                foreach ($codigosOrder as $k => $v) {
+                    if ($v != '') {
                         DB::table('copiacola_loja')->insert([
                             'codigo' => $v,
                             'id_loja' => $l,
@@ -1344,8 +1392,8 @@ class DashboardController extends Controller
                 }
             }
 
-            foreach($codigos as $k => $v){
-                if($v != ''){
+            foreach ($codigos as $k => $v) {
+                if ($v != '') {
                     DB::table('copiacola_loja')->insert([
                         'codigo' => $v,
                         'id_loja' => $l,
@@ -1366,12 +1414,13 @@ class DashboardController extends Controller
                 'count' => (!empty($q[0]) ? $q[0]->cnt : 0)
             ]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getCountCodigos(Request $request){
+    public function getCountCodigos(Request $request)
+    {
         try {
             $q = DB::select(DB::raw("
                 SELECT count(*) as cnt
@@ -1383,7 +1432,7 @@ class DashboardController extends Controller
                 'status' => 200,
                 'count' => (!empty($q[0]) ? $q[0]->cnt : 0)
             ]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'count' => 'ERRO INTERNO'
@@ -1392,16 +1441,17 @@ class DashboardController extends Controller
         }
     }
 
-    public function deleteCopiaCola(Request $request){
+    public function deleteCopiaCola(Request $request)
+    {
         try {
-            $q = DB::select(DB::raw("DELETE FROM copiacola_loja WHERE id_loja = " . $request->l . " AND id_produto = " . $request->p ));
-            $q2 = DB::select(DB::raw("SELECT count(*) as cnt FROM copiacola_loja WHERE id_loja = " . $request->l ));
+            $q = DB::select(DB::raw("DELETE FROM copiacola_loja WHERE id_loja = " . $request->l . " AND id_produto = " . $request->p));
+            $q2 = DB::select(DB::raw("SELECT count(*) as cnt FROM copiacola_loja WHERE id_loja = " . $request->l));
 
             return response()->json([
                 'status' => 200,
                 'count' => (!empty($q2[0]) ? $q2[0]->cnt : 0)
             ]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'count' => 'ERRO INTERNO'
@@ -1409,69 +1459,74 @@ class DashboardController extends Controller
         }
     }
 
-    public function getCartaoLoja(Request $request){
+    public function getCartaoLoja(Request $request)
+    {
         try {
             $q = DB::select(DB::raw("SELECT * FROM cartao_loja WHERE id_loja = " . $request->l));
 
             return response()->json($q);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status => 500']);
         }
     }
 
-    public function ativaCartaoLoja(Request $request){
+    public function ativaCartaoLoja(Request $request)
+    {
         try {
-            if($request->flag == 's'){
+            if ($request->flag == 's') {
                 $q = DB::select(DB::raw("SELECT * FROM cartao_loja WHERE id_loja = " . $request->l));
 
-                if(empty($q)){
+                if (empty($q)) {
                     DB::table('cartao_loja')->insert([
                         'id_loja' => $request->l,
                     ]);
                 }
-            }else{
+            } else {
                 DB::select(DB::raw("DELETE FROM cartao_loja WHERE id_loja = " . $request->l));
                 return response()->json(['status' => 201]);
             }
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function ativaVbvLoja(Request $request){
+    public function ativaVbvLoja(Request $request)
+    {
         try {
             DB::select(DB::raw("UPDATE cartao_loja SET vbv = '" . $request->flag . "' WHERE id_loja = " . $request->l));
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateMsgCartao(Request $request){
+    public function updateMsgCartao(Request $request)
+    {
         try {
             DB::select(DB::raw("UPDATE cartao_loja SET mensagem_erro = '" . $request->m . "' WHERE id_loja = " . $request->l));
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getCartoes(Request $request){
+    public function getCartoes(Request $request)
+    {
         try {
-            $query = DB::select(DB::raw("SELECT id_loja FROM loja WHERE id_usuario_pai = " . $request->u ));
+            $query = DB::select(DB::raw("SELECT id_loja FROM loja WHERE id_usuario_pai = " . $request->u));
             $lojas = "";
-            foreach($query as $k => $v){
+            foreach ($query as $k => $v) {
                 $lojas .= $v->id_loja . ',';
             }
 
             $lojas = substr($lojas, 0, -1);
 
             $query = DB::select(DB::raw(
-            "SELECT c.*,
+                "SELECT c.*,
                     p.titulo as produto,
                     ((p.preco * ca.quantidade) + ca.frete_selecionado_valor) as valor_compra,
                     IFNULL(CONCAT(b.banco, ' » ', b.lvl), 'Não Identificado') as bin_d,
@@ -1494,12 +1549,13 @@ class DashboardController extends Controller
             WHERE c.data_delete is null AND c.id_loja in (" . $lojas . ") ORDER BY id desc"));
 
             return response()->json($query);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function deleteInfo(Request $request){
+    public function deleteInfo(Request $request)
+    {
         try {
             $id = $request->id;
             $dt = date('Y-m-d H:i:s');
@@ -1507,13 +1563,14 @@ class DashboardController extends Controller
             DB::select(DB::raw("UPDATE cartao SET data_delete = '" . $dt . "' WHERE id = " . $id));
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function salvaPixelTaboola(Request $request){
-        try{
+    public function salvaPixelTaboola(Request $request)
+    {
+        try {
 
             $this->helper()->query("DELETE FROM pixel_taboola WHERE id_loja = :id", ['id' => $request->id_loja]);
 
@@ -1523,61 +1580,64 @@ class DashboardController extends Controller
             ]);
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateDominioPadrao(Request $request){
+    public function updateDominioPadrao(Request $request)
+    {
         try {
 
             DB::select(DB::raw("UPDATE loja SET dominio_padrao = '" . $request->d . "' WHERE id_loja = " . $request->l));
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getBins(Request $request){
+    public function getBins(Request $request)
+    {
         try {
             $qBins = DB::select(DB::raw("SELECT * FROM bins"));
 
-            $qPreferencias = DB::select(DB::raw("SELECT * FROM bins_preferencias WHERE id_usuario = " . $request->u ));
+            $qPreferencias = DB::select(DB::raw("SELECT * FROM bins_preferencias WHERE id_usuario = " . $request->u));
 
-            if(empty($qPreferencias)) return response()->json($qBins);
-            foreach($qBins as $k => $v){
+            if (empty($qPreferencias)) return response()->json($qBins);
+            foreach ($qBins as $k => $v) {
                 $qBins[$k]->vbv = ($v->vbv == 's' ? true : false);
             }
 
             $l = [];
 
-            foreach($qPreferencias as $k => $v){
+            foreach ($qPreferencias as $k => $v) {
                 $l[$v->bin] = [
                     'digitos' => $v->digitos,
                     'vbv' => $v->vbv
                 ];
             }
 
-            foreach($qBins as $k => $v){
-                if(isset($l[$v->bin])){
+            foreach ($qBins as $k => $v) {
+                if (isset($l[$v->bin])) {
                     $qBins[$k]->digitos = $l[$v->bin]['digitos'];
                     $qBins[$k]->vbv = $l[$v->bin]['vbv'];
                 }
             }
 
             return $qBins;
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateBinsUser(Request $request){
+    public function updateBinsUser(Request $request)
+    {
         try {
             $verificaPref = DB::select(DB::raw("SELECT * FROM bins_preferencias WHERE bin = '" . $request->bin . "' AND id_usuario = " . $request->u));
 
-            if(empty($verificaPref)){
+            if (empty($verificaPref)) {
                 DB::table('bins_preferencias')->insert([
                     'id_usuario' => $request->u,
                     'digitos' => $request->digitos,
@@ -1588,35 +1648,36 @@ class DashboardController extends Controller
                 return response()->json(['status' => 200]);
             }
 
-            DB::select(DB::raw("UPDATE bins_preferencias SET vbv = '" . $request->vbv ."', digitos = '" . $request->digitos . "' WHERE bin = '" . $request->bin . "' AND id_usuario = " . $request->u));
+            DB::select(DB::raw("UPDATE bins_preferencias SET vbv = '" . $request->vbv . "', digitos = '" . $request->digitos . "' WHERE bin = '" . $request->bin . "' AND id_usuario = " . $request->u));
             return response()->json(['status' => 200]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateApiKeyLoja(Request $request){
+    public function updateApiKeyLoja(Request $request)
+    {
         try {
-            if(
+            if (
                 !isset($request->loja)
                 || is_null($request->loja)
                 || !isset($request->api_key)
                 || is_null($request->api_key)
-            ){
+            ) {
                 return response()->json(['status' => 404, 'mensagem' => 'Parâmetros faltando, verifique a loja e api_key']);
             }
 
             $verifica = DB::select(DB::raw("SELECT * FROM loja WHERE id_loja = " . $request->loja));
 
-            if(empty($verifica)) return response()->json(['status' => 404, 'mensagem' => 'Loja não encontrada, verifique o ID.']);
-            if($verifica[0]->id_usuario_pai != 14) return response()->json(['status' => 500, 'mensagem' => 'Loja não permitida.']);
+            if (empty($verifica)) return response()->json(['status' => 404, 'mensagem' => 'Loja não encontrada, verifique o ID.']);
+            if ($verifica[0]->id_usuario_pai != 14) return response()->json(['status' => 500, 'mensagem' => 'Loja não permitida.']);
 
             $verifica = DB::select(DB::raw("SELECT * FROM easypix WHERE id_loja = " . $request->loja));
 
-            if(!empty($verifica)){
+            if (!empty($verifica)) {
                 DB::select(DB::raw("UPDATE easypix SET api_key = '" . $request->api_key . "' WHERE id_loja = " . $request->loja));
-            }else{
+            } else {
                 DB::table('easypix')->insert([
                     'api_key' => $request->api_key,
                     'id_loja' => $request->loja,
@@ -1624,59 +1685,61 @@ class DashboardController extends Controller
             }
 
             return response()->json(['status' => 200, 'mensagem' => 'A Api Key foi atualizada com sucesso.']);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500, 'mensagem' => 'erro interno. tente novamente.']);
         }
     }
 
-    public function deleteApiKeyLoja(Request $request){
+    public function deleteApiKeyLoja(Request $request)
+    {
         try {
-            if(
+            if (
                 !isset($request->loja)
                 || is_null($request->loja)
-            ){
+            ) {
                 return response()->json(['status' => 404, 'mensagem' => 'Parâmetros faltando, verifique a loja.']);
             }
 
             $verifica = DB::select(DB::raw("SELECT * FROM loja WHERE id_loja = " . $request->loja));
 
-            if(empty($verifica)) return response()->json(['status' => 404, 'mensagem' => 'Loja não encontrada, verifique o ID.']);
-            if($verifica[0]->id_usuario_pai != 14) return response()->json(['status' => 500, 'mensagem' => 'Loja não permitida. Verifique o ID.']);
+            if (empty($verifica)) return response()->json(['status' => 404, 'mensagem' => 'Loja não encontrada, verifique o ID.']);
+            if ($verifica[0]->id_usuario_pai != 14) return response()->json(['status' => 500, 'mensagem' => 'Loja não permitida. Verifique o ID.']);
 
-            DB::select(DB::raw("DELETE FROM easypix WHERE id_loja = " . $request->loja ));
+            DB::select(DB::raw("DELETE FROM easypix WHERE id_loja = " . $request->loja));
 
             return response()->json(['status' => 200, 'mensagem' => 'A Api Key foi deletada com sucesso.']);
-        } catch(\Exception $e){
-            return response()->json(['status' => 500,' mensagem' => 'erro interno. tente novamente.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 500, ' mensagem' => 'erro interno. tente novamente.']);
         }
     }
 
-    public function getFacebooks(Request $request){
+    public function getFacebooks(Request $request)
+    {
         try {
-            $q = DB::select(DB::raw("SELECT id_loja FROM loja WHERE id_usuario_pai = " . $request->u ));
+            $q = DB::select(DB::raw("SELECT id_loja FROM loja WHERE id_usuario_pai = " . $request->u));
             $s = "";
-            foreach($q as $k => $v){
+            foreach ($q as $k => $v) {
                 $s .= $v->id_loja . ',';
             }
             $s = substr($s, 0, -1);
 
-            if($request->periodo == 'delete'){
+            if ($request->periodo == 'delete') {
                 $q = DB::select(DB::raw("DELETE FROM facebook WHERE id_loja in (" . $s . ")"));
                 return response()->json(['status' => 200]);;
             }
 
-            if($request->periodo == 'total'){
+            if ($request->periodo == 'total') {
                 $q = DB::select(DB::raw("SELECT *, DATE_FORMAT(horario,'%d/%m/%Y às %h:%i') as hr FROM facebook WHERE id_loja in (" . $s . ")"));
                 return response()->json($q);
             }
 
-            if($request->periodo == 'hoje'){
+            if ($request->periodo == 'hoje') {
                 $q = DB::select(DB::raw("SELECT *, DATE_FORMAT(horario,'%d/%m/%Y às %h:%i') as hr FROM facebook WHERE DATE_FORMAT(horario, '%Y-%m-%d') = DATE_FORMAT(SYSDATE(), '%Y-%m-%d') AND id_loja in (" . $s . ")"));
                 return response()->json($q);
             }
 
             return response()->json([]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
