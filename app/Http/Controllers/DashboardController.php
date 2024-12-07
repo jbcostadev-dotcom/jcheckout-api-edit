@@ -2,15 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Helper;
-use App\Http\Controllers\WhatsappController;
-use App\Http\Controllers\EmailController;
-use App\Http\Controllers\CheckoutController;
-use DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use PHPShopify\ShopifySDK;
 use stdClass;
 
