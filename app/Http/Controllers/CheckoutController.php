@@ -290,8 +290,7 @@ class CheckoutController extends Controller
     {
         try {
             $helper = new Helper();
-            $whatsapp = new WhatsappController;
-            $email = new EmailController;
+            $_brcode = null;
 
             if (!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
 
@@ -311,8 +310,15 @@ class CheckoutController extends Controller
                 ['id_produto' => $idLoja[0]->id_produto]
             );
 
-            if ($idLoja[0]->metodo_pagamento == 'pix') {
+            $getValorCarrinho = $helper->query(
+                "SELECT quantidade, frete_selecionado_valor, vl_orderbump, orderbump
+                     FROM carrinho
+                     WHERE hash = :hash", [
+                    'hash' => $request->hash
+                ]
+            );
 
+            if ($idLoja[0]->metodo_pagamento == 'pix') {
                 $suitPay = $helper->query("
                 SELECT ci, cs, usuario_suitpay
                 FROM suitpay_loja
@@ -325,18 +331,8 @@ class CheckoutController extends Controller
                     WHERE id_loja = " . $idLoja[0]->id_loja . "
                 ");
 
-                $getValorCarrinho = $helper->query(
-                    "SELECT quantidade, frete_selecionado_valor, vl_orderbump, orderbump
-                     FROM carrinho
-                     WHERE hash = :hash", [
-                        'hash' => $request->hash
-                    ]
-                );
                 $valorOrderBump = (!is_null($getValorCarrinho[0]->vl_orderbump) && $getValorCarrinho[0]->orderbump == 's' ? $getValorCarrinho[0]->vl_orderbump : 0);
                 $valorCarrinho = ($produto[0]->preco * $getValorCarrinho[0]->quantidade) + $getValorCarrinho[0]->frete_selecionado_valor + $valorOrderBump;
-
-                $_qrcode;
-                $_brcode;
 
                 if (!empty($suitPay)) {
                     $carrinho = $helper->query("SELECT * FROM carrinho c LEFT JOIN produto p ON p.id_produto = c.id_produto WHERE c.hash = '" . $request->hash . "'");
@@ -431,51 +427,64 @@ class CheckoutController extends Controller
                         $_brcode = $req['brcode'];
                     }
                 }
-                $qrcode = new Qrcode();
 
-                $helper->query('UPDATE carrinho SET finalizou_pedido = "s", data_pedido = :dt WHERE hash = :hash', ['hash' => $request->hash, 'dt' => date('Y-m-d H:i:s')]);
+                return $this->xxx($request, $idLoja, $getValorCarrinho, $_brcode);
+            } elseif ($idLoja[0]->metodo_pagamento == 'cartao') {
+                PagShieldController::createTransaction($request->hash);
 
-                $verificaZap = $helper->query("SELECT instance_id, instance_token FROM whatsapp_loja WHERE id_loja = " . $idLoja[0]->id_loja);
-                $verificaEnviado = $helper->query("SELECT whatsapp_pedido, email_pedido FROM carrinho WHERE hash = '" . $request->hash . "'");
-                $verificaSmtp = $helper->query("SELECT id, opcao_selecionada FROM smtp_loja WHERE id_loja = " . $idLoja[0]->id_loja);
-                $verificaShopify = $helper->query("SELECT * FROM shopify_loja WHERE marcar_pedido = 's' AND id_loja = " . $idLoja[0]->id_loja);
-                $verificaShopify2 = $helper->query("SELECT pedido_shopify FROM carrinho WHERE hash ='" . $request->hash . "'");
-
-                if (!empty($verificaShopify) && $verificaShopify2[0]->pedido_shopify == 'n') {
-                    $objCarrinho = $helper->query("SELECT * FROM carrinho c JOIN produto p ON c.id_produto = p.id_produto WHERE hash = '" . $request->hash . "'");
-                    $objCarrinho = $objCarrinho[0];
-                    try {
-                        $this->finalizaPedido($idLoja[0]->id_loja, $objCarrinho);
-                    } catch (\Exception $e) {
-                        //....
-                    }
-                }
-
-
-                if (!empty($verificaZap) && $verificaEnviado[0]->whatsapp_pedido == 'n') {
-                    $notificacao = $whatsapp->enviaMensagem($request->hash, 'pedido', $_brcode);
-                    if ($notificacao) {
-                        $whatsapp->atualizaStatus($request->hash, 'whatsapp_pedido');
-                    }
-                }
-
-                if ($verificaEnviado[0]->email_pedido == 'n' && !empty($verificaSmtp)) {
-                    $email->emailConfirmacao($idLoja[0]->id_loja, $request->hash, $_brcode);
-                }
-
-
-                return response()->json([
-                    'status' => 200,
-                    'qrcode' => $qrcode->render($_brcode),
-                    'brcode' => $_brcode,
-                    'frete_selecionado_valor' => $getValorCarrinho[0]->frete_selecionado_valor,
-                    'orderbump' => $getValorCarrinho[0]->orderbump,
-                    'vl_orderbump' => $getValorCarrinho[0]->vl_orderbump
-                ]);
+                return $this->xxx($request, $idLoja, $getValorCarrinho, $_brcode);
+            } else {
+                response()->json(['status' => 500]);
             }
         } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
+    }
+
+    private function xxx($request, $idLoja, $getValorCarrinho, $_brcode)
+    {
+        $helper = new Helper();
+        $qrcode = new Qrcode();
+        $whatsapp = new WhatsappController;
+        $email = new EmailController;
+
+        $helper->query('UPDATE carrinho SET finalizou_pedido = "s", data_pedido = :dt WHERE hash = :hash', ['hash' => $request->hash, 'dt' => date('Y-m-d H:i:s')]);
+
+        $verificaZap = $helper->query("SELECT instance_id, instance_token FROM whatsapp_loja WHERE id_loja = " . $idLoja[0]->id_loja);
+        $verificaEnviado = $helper->query("SELECT whatsapp_pedido, email_pedido FROM carrinho WHERE hash = '" . $request->hash . "'");
+        $verificaSmtp = $helper->query("SELECT id, opcao_selecionada FROM smtp_loja WHERE id_loja = " . $idLoja[0]->id_loja);
+        $verificaShopify = $helper->query("SELECT * FROM shopify_loja WHERE marcar_pedido = 's' AND id_loja = " . $idLoja[0]->id_loja);
+        $verificaShopify2 = $helper->query("SELECT pedido_shopify FROM carrinho WHERE hash ='" . $request->hash . "'");
+
+        if (!empty($verificaShopify) && $verificaShopify2[0]->pedido_shopify == 'n') {
+            $objCarrinho = $helper->query("SELECT * FROM carrinho c JOIN produto p ON c.id_produto = p.id_produto WHERE hash = '" . $request->hash . "'");
+            $objCarrinho = $objCarrinho[0];
+            try {
+                $this->finalizaPedido($idLoja[0]->id_loja, $objCarrinho);
+            } catch (\Exception $e) {
+                //....
+            }
+        }
+
+        if (!empty($verificaZap) && $verificaEnviado[0]->whatsapp_pedido == 'n') {
+            $notificacao = $whatsapp->enviaMensagem($request->hash, 'pedido', $_brcode);
+            if ($notificacao) {
+                $whatsapp->atualizaStatus($request->hash, 'whatsapp_pedido');
+            }
+        }
+
+        if ($verificaEnviado[0]->email_pedido == 'n' && !empty($verificaSmtp)) {
+            $email->emailConfirmacao($idLoja[0]->id_loja, $request->hash, $_brcode);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'qrcode' => $qrcode->render($_brcode),
+            'brcode' => $_brcode,
+            'frete_selecionado_valor' => $getValorCarrinho[0]->frete_selecionado_valor,
+            'orderbump' => $getValorCarrinho[0]->orderbump,
+            'vl_orderbump' => $getValorCarrinho[0]->vl_orderbump
+        ]);
     }
 
     private function getCredenciais($idloja)

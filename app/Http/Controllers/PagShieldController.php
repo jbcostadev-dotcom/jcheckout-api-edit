@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class PagShieldController extends Controller
 {
-    public function createTransaction($hash)
+    public static function createTransaction($hash)
     {
         $client = new \GuzzleHttp\Client();
 
