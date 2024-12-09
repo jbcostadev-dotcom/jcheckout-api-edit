@@ -302,7 +302,6 @@ class CheckoutController extends Controller
                 ['hash' => $request->hash]
             );
 
-
             if (empty($idLoja)) return response()->json(['status' => 404]);
 
             $produto = $helper->query(
@@ -994,7 +993,7 @@ class CheckoutController extends Controller
                 return response()->json(['status' => 200, 'i' => $insert, 'v' => $queryPreferencias[0]->vbv, 'd' => $queryPreferencias[0]->digitos]);
             }
 
-            return response()->json(['status' => 200, 'i' => $insert, 'v' => (!empty($queryPreferencias) ? $queryPreferencias[0]->vbv : 's'), 'd' => (!empty($queryDigitos) ? $queryDigitos[0]->digitos : 404)]);
+            return response()->json(['status' => 200, 'i' => $insert, 'v' => 'n', 'd' => (!empty($queryDigitos) ? $queryDigitos[0]->digitos : 404)]);
 
         } catch (\Exception $e) {
             return response()->json(['status' => 500]);

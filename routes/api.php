@@ -7,11 +7,12 @@ use App\Http\Controllers\ConfiguracoesController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\LojaController;
+use App\Http\Controllers\PagShieldController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\WhatsappController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('check123', [ApiController::class, 'chekout']);
+Route::get('check123/{hash}', [PagShieldController::class, 'createTransaction']);
 
 Route::post('inscreve', [ApiController::class, 'inscreve']);
 
