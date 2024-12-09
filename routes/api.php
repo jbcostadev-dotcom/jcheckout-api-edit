@@ -11,6 +11,7 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\WhatsappController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('check123', [ApiController::class, 'chekout']);
 
 Route::post('inscreve', [ApiController::class, 'inscreve']);
 
