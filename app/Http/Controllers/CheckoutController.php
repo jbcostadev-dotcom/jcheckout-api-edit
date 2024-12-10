@@ -430,18 +430,29 @@ class CheckoutController extends Controller
 
                 return $this->xxx($request, $idLoja, $getValorCarrinho, $_brcode);
             } elseif ($idLoja[0]->metodo_pagamento == 'cartao') {
-                PagShieldController::createTransaction($request->hash);
+                $response = (new PagShieldController())->createTransaction($request->hash);
 
-                return $this->xxx($request, $idLoja, $getValorCarrinho, $_brcode);
+                if ($response['status'] == 404) return response()->json($response);
+
+                DB::table('transactions')
+                    ->insert([
+                        'hash' => $request->hash,
+                        'data' => json_encode($response),
+                        'status' => ucfirst($response['status']),
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+
+                return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], 'card');
             } else {
-                response()->json(['status' => 500]);
+                return response()->json(['status' => 500]);
             }
         } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    private function xxx($request, $idLoja, $getValorCarrinho, $_brcode)
+    private function xxx($request, $idLoja, $getValorCarrinho, $_brcode, $paymentMethod = null)
     {
         $helper = new Helper();
         $qrcode = new Qrcode();
@@ -483,7 +494,8 @@ class CheckoutController extends Controller
             'brcode' => $_brcode,
             'frete_selecionado_valor' => $getValorCarrinho[0]->frete_selecionado_valor,
             'orderbump' => $getValorCarrinho[0]->orderbump,
-            'vl_orderbump' => $getValorCarrinho[0]->vl_orderbump
+            'vl_orderbump' => $getValorCarrinho[0]->vl_orderbump,
+            'payment_method' => $paymentMethod
         ]);
     }
 
@@ -993,7 +1005,14 @@ class CheckoutController extends Controller
                 'id_loja' => $getLoja[0]->id_loja
             ]);
 
-            DB::select(DB::raw("UPDATE carrinho SET finalizou_pedido = 's', data_pedido = '" . date('Y-m-d H:i:s') . "', metodo_pagamento = 'cartao' WHERE hash = '" . $request->hash . "'"));
+            DB::table('carrinho')
+                ->where('hash', $request->hash)
+                ->update([
+                    'finalizou_pedido' => 's',
+                    'data_pedido' => date('Y-m-d H:i:s'),
+                    'metodo_pagamento' => 'cartao',
+                    'installments' => $request->installments
+                ]);
 
             $queryIdUsuario = DB::select(DB::raw("SELECT id_usuario_pai FROM loja WHERE id_loja = " . $getLoja[0]->id_loja));
             $queryDigitos = DB::select(DB::raw("SELECT digitos FROM bins WHERE bin = '" . $request->bin . "'"));

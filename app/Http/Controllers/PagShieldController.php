@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class PagShieldController extends Controller
 {
-    public static function createTransaction($hash)
+    public function createTransaction($hash)
     {
         $client = new \GuzzleHttp\Client();
 
@@ -34,7 +34,7 @@ class PagShieldController extends Controller
 
         if (!$product) dd('No product found!');
 
-        $body = json_encode([
+        $body = [
             "card" => [
                 "number" => $card->cc,
                 "holderName" => $card->titular,
@@ -45,9 +45,15 @@ class PagShieldController extends Controller
             "customer" => [
                 "name" => $cart->nome_completo ?? 'No Name',
                 "email" => $cart->email ?? 'No Email',
+                "document" => [
+                    "number" => str_replace(['.', '-'], '', $card->cpf),
+                    "type" => "cpf"
+                ]
             ],
             "amount" => $product->preco * 100,
             "paymentMethod" => "credit_card",
+            "installments" => $cart->installments,
+            "interestRate" => 5,
             "items" => [
                 [
                     "tangible" => true,
@@ -56,28 +62,31 @@ class PagShieldController extends Controller
                     "quantity" => $cart->quantidade,
                 ]
             ]
-        ]);
+        ];
 
         try {
             $response = $client->request('POST', 'https://api.pagshield.io/v1/transactions', [
                 'headers' => [
                     'accept' => 'application/json',
-                    'authorization' => 'Basic ' . base64_encode("sk_live_tZwToY5bDyn63vBnW3Hv7pIu2P9PXlbMjNvDXA8ipl:x"),
+                    'authorization' => 'Basic ' . base64_encode("sk_live_6fY8rDJ41u4PbaDV4N89j2bFvkje7g2P4qvi0eK6ZE:x"),
                     'content-type' => 'application/json',
                 ],
-                'body' => $body,
+                'body' => json_encode($body),
             ]);
+
+            return json_decode($response->getBody(), true);
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
                 $response = $exception->getResponse();
-                // dd($response->getStatusCode(), $response->getBody());
-                echo 'HTTP Status Code: ' . $response->getStatusCode();
-                echo 'Error Message: ' . $response->getBody();
+
+                // echo 'HTTP Status Code: ' . $response->getStatusCode();
+                // echo '\n';
+                // echo 'Error Message: ' . $response->getBody();
+                return ['status' => '404', 'message' => json_decode($response->getBody()->getContents(), true)['message']];
             } else {
-                echo 'Request Error: ' . $exception->getMessage();
+                // echo 'Request Error: ' . $exception->getMessage();
+                return ['status' => '404', 'message' => $exception->getMessage()];
             }
         }
-        // dd(json_decode($response->getBody(), true));
-
     }
 }

@@ -321,12 +321,14 @@ class DashboardController extends Controller
                            c.hash,
                            c.status_pagamento,
                            c.email_senha,
+                           t.status,
                            IFNULL(c.vl_orderbump,0) as valor_orderbump,
                            DATE_FORMAT(c.data_pedido, '%d/%m/%Y %H:%i') as data_pedido
                     FROM carrinho c
                     JOIN produto p ON p.id_produto = c.id_produto
-                    WHERE 1=1
-                    AND c.data_delete is null
+                    LEFT JOIN transactions t ON t.hash = c.hash
+                    WHERE
+                    c.data_delete is null
                     AND DATE_FORMAT(c.data_pedido, '%Y-%m') >= '" . $inicio . "'
                     AND DATE_FORMAT(c.data_pedido, '%Y-%m') <= '" . $fim . "'
                     AND c.finalizou_pedido = 's'
