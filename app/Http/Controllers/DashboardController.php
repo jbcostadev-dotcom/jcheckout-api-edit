@@ -162,6 +162,7 @@ class DashboardController extends Controller
                 'log' => $queryLog,
                 'fbpixel' => $queryPixelFb,
                 'taboolapixel' => (!empty($queryPixelTaboola) ? $queryPixelTaboola[0]->id_taboola : null),
+                'pixelUtmify' => DB::table('pixel_utmify')->where('loja_id', $request->id_loja)->value('api_key'),
                 'pix' => (empty($queryPix)
                     ? null
                     : (array)$queryPix[0]
@@ -1579,6 +1580,21 @@ class DashboardController extends Controller
                 'id_taboola' => $request->p1,
                 'id_loja' => $request->id_loja
             ]);
+
+            return response()->json(['status' => 200]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 500]);
+        }
+    }
+
+    public function savePixelUtmify(Request $request)
+    {
+        try {
+            DB::table('pixel_utmify')
+                ->updateOrInsert(
+                    ['loja_id' => $request->id_loja],
+                    ['api_key' => $request->api_key]
+                );
 
             return response()->json(['status' => 200]);
         } catch (\Exception $e) {

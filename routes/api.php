@@ -151,6 +151,7 @@ Route::group(['middleware' => ['auth:sanctum', 'cors']], function () {
     Route::post('/dashboard/getCartoes', [DashboardController:: class, 'getCartoes']);
     Route::post('/dashboard/deleteInfo', [DashboardController:: class, 'deleteInfo']);
     Route::post('/dashboard/salvaPixelTaboola', [DashboardController:: class, 'salvaPixelTaboola']);
+    Route::post('/dashboard/savePixelUtmify', [DashboardController:: class, 'savePixelUtmify']);
     Route::post('/dashboard/updateDominioPadrao', [DashboardController:: class, 'updateDominioPadrao']);
     Route::post('/dashboard/getBins', [DashboardController:: class, 'getBins']);
     Route::post('/dashboard/updateBinsUser', [DashboardController:: class, 'updateBinsUser']);
