@@ -3,14 +3,13 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use DB;
-use App\Http\Controllers\Helper;
+use Illuminate\Support\Facades\DB;
 use PHPShopify\ShopifySDK;
 
 class CarrinhoController extends Controller
 {
     private function getCredenciais($idloja){
-        try {  
+        try {
             $q = DB::select(DB::raw("
                 SELECT *
                 FROM shopify_loja
@@ -30,7 +29,7 @@ class CarrinhoController extends Controller
             return false;
         }
     }
-    
+
     public function instanciaCarrinho(Request $request){
         $helper = new Helper();
 
@@ -38,7 +37,7 @@ class CarrinhoController extends Controller
             !$helper->verificaParametro($request->id_loja)
             || !$helper->verificaParametro($request->id_produto)
         ) return response()->json([ 'status' => 500 ]);
-        
+
 
         if($request->shopify == 's'){
 
@@ -47,7 +46,7 @@ class CarrinhoController extends Controller
             $flag = "";
 
             if($variacao != null) $flag = "AND id_variante_shopify is not null";
-            
+
             $q = DB::select(DB::raw("
                 SELECT id_produto
                 FROM produto
@@ -61,7 +60,7 @@ class CarrinhoController extends Controller
                 $produto = $shopify->Product($request->is)->get();
                 $imagem = null;
                 $preco;
-                
+
                 if($request->vs != 'undefined' && !is_null($request->vs)){
                     $l = [];
                     foreach($produto['variants'] as $k => $v){
@@ -86,13 +85,13 @@ class CarrinhoController extends Controller
                     if(is_null($imagem)){
                         $imagem = $produto['images'][0]['src'];
                     }
-                    
+
                 }else{
                     $preco = $produto['variants'][0]['price'];
                     if(!is_null($produto['images'][0]['src'])) $imagem = $produto['images'][0]['src'];
                 }
 
-                
+
                 $variacao = ($request->vs != 'undefined' && $request->vs != null ? $request->vs : $produto['variants'][0]['id']);
 
                 $q = DB::select(DB::raw("SELECT id_usuario_pai FROM loja WHERE id_loja = " . $request->id_loja));
@@ -111,7 +110,7 @@ class CarrinhoController extends Controller
                     ]);
                 }
 
-                
+
                 $q = DB::select(DB::raw("SELECT id_produto FROM produto WHERE id_shopify = " . $request->is));
                 $request->id_produto = $q[0]->id_produto;
             }else{
@@ -119,11 +118,11 @@ class CarrinhoController extends Controller
 
             }
         }
-        
+
         $hashCarrinho = strtotime(date('Y-m-d H:i:s')) . $request->id_loja . $request->id_produto . ($request->shopify == 's' ?  rand(5555,100000) : rand(1,10));
-        
+
         $verificaHash = $helper->query("SELECT id_carrinho FROM carrinho WHERE hash = '" . $hashCarrinho . "'");
-        
+
 
         $qry = DB::select(DB::raw("
             SELECT l.nm_loja,
@@ -142,7 +141,7 @@ class CarrinhoController extends Controller
         ]);
 
         if(empty($qry)) return response()->json(['status' => 404]);
-        
+
         if(empty($verificaHash[0])){
             $idCarrinho = DB::table('carrinho')->insertGetId([
                 'id_loja' => $request->id_loja,
@@ -150,8 +149,24 @@ class CarrinhoController extends Controller
                 'hash' => $hashCarrinho,
                 'dt_instancia_carrinho' => date('Y-m-d H:i:s'),
                 'quantidade' => $request->quantidade,
-                'variacao' => (!is_null($request->variacao) ? $request->variacao : null)
+                'variacao' => (!is_null($request->variacao) ? $request->variacao : null),
             ]);
+
+            $utm = $request->utm;
+
+            if ($utm['source'] || $utm['campaign'] || $utm['medium'] || $utm['content'] || $utm['term'] || $utm['xcod']) {
+                DB::table('utms')->insert([
+                    'cart_id' => $idCarrinho,
+                    'source' => $utm['source'],
+                    'campaign' => $utm['campaign'],
+                    'medium' => $utm['medium'],
+                    'content' => $utm['content'],
+                    'term' => $utm['term'],
+                    'xcod' => $utm['xcod'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         $snLogin = DB::select(DB::raw("SELECT * FROM checkout_preferencias WHERE id_loja = " . $request->id_loja ));
@@ -181,7 +196,7 @@ class CarrinhoController extends Controller
 
         try {
             $query = DB::select(DB::raw(
-                "UPDATE carrinho 
+                "UPDATE carrinho
                  SET nome_completo = :nome_completo,
                      email = :email,
                      cpf = :cpf,
@@ -271,7 +286,7 @@ class CarrinhoController extends Controller
     public function atualizaFreteHash(Request $request){
         try {
             $helper = new Helper();
-            if(!$helper->verificaParametro($request->hash) 
+            if(!$helper->verificaParametro($request->hash)
             && !$helper->verificaParametro($request->frete)
             ) return response()->json(['status' => 500]);
 
@@ -379,7 +394,7 @@ class CarrinhoController extends Controller
             }
 
         } catch(\Exception $e){
-            
+
             return response()->json(['status' => 500]);
         }
     }
@@ -402,7 +417,7 @@ class CarrinhoController extends Controller
             if($verifica[0]->dominio_padrao == null){
                 $q2 = DB::select(DB::raw("
                     SELECT dominio
-                    FROM dominio 
+                    FROM dominio
                     WHERE id_usuario = " . $q[0]->id_usuario_pai . "
                 "));
                 $dominio = $q2[0]->dominio;
