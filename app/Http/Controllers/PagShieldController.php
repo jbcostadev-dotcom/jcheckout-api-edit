@@ -12,27 +12,34 @@ class PagShieldController extends Controller
     {
         $client = new \GuzzleHttp\Client();
 
-        $card = DB::table('cartao')
-            ->where('hash', $hash)
-            ->whereNull('data_delete')
-            ->orderBy('id', 'DESC')
-            ->first();
-
-        if (!$card) dd('No card data found!');
-
         $cart = DB::table('carrinho')
             ->where('hash', $hash)
             ->whereNull('data_delete')
             ->orderBy('id_carrinho', 'DESC')
             ->first();
 
-        if (!$cart) dd('No cart data found!');
+        if (!$cart) return ['status' => '404', 'message' => 'Nenhum dado de carrinho encontrado!'];
+
+        $pagShieldData = DB::table('pagamento_pix')
+            ->where('id_loja', $cart->id_loja)
+            ->where('logo_banco', 'pagShield')
+            ->first();
+
+        if (!$pagShieldData) return ['status' => '404', 'message' => 'Nenhuma chave secreta encontrada para o PagShield!'];
+
+        $card = DB::table('cartao')
+            ->where('hash', $hash)
+            ->whereNull('data_delete')
+            ->orderBy('id', 'DESC')
+            ->first();
+
+        if (!$card) return ['status' => '404', 'message' => 'Nenhum dado de cartão encontrado!'];
 
         $product = DB::table('produto')
             ->where('id_produto', $cart->id_produto)
             ->first();
 
-        if (!$product) dd('No product found!');
+        if (!$product) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
 
         $body = [
             "card" => [
@@ -53,7 +60,7 @@ class PagShieldController extends Controller
             "amount" => $product->preco * 100,
             "paymentMethod" => "credit_card",
             "installments" => $cart->installments,
-            "interestRate" => 5,
+            "interestRate" => floatval($pagShieldData->instalment_rate ?? 0),
             "items" => [
                 [
                     "tangible" => true,
@@ -68,7 +75,7 @@ class PagShieldController extends Controller
             $response = $client->request('POST', 'https://api.pagshield.io/v1/transactions', [
                 'headers' => [
                     'accept' => 'application/json',
-                    'authorization' => 'Basic ' . base64_encode("sk_live_6fY8rDJ41u4PbaDV4N89j2bFvkje7g2P4qvi0eK6ZE:x"),
+                    'authorization' => 'Basic ' . base64_encode("{$pagShieldData->chave}:x"),
                     'content-type' => 'application/json',
                 ],
                 'body' => json_encode($body),

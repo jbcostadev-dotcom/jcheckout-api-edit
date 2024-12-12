@@ -58,7 +58,7 @@ class CheckoutController extends Controller
         $query[0]->pixeltaboola = (!empty($queryPixelTaboola) ? $queryPixelTaboola[0]->id_taboola : null);
 
         $queryPreferencias = $helper->query("
-             SELECT resumo_aberto, ultimo_dia, colher_senha
+             SELECT resumo_aberto, ultimo_dia, colher_senha, redirect_link
              FROM checkout_preferencias
              WHERE id_loja = :id
         ", ['id' => $query[0]->id_loja]);
@@ -96,10 +96,12 @@ class CheckoutController extends Controller
             $query[0]->resumo_aberto = false;
             $query[0]->ultimo_dia = false;
             $query[0]->colher_senha = false;
+            $query[0]->redirect_link = null;
         } else {
             $query[0]->resumo_aberto = ($queryPreferencias[0]->resumo_aberto == 's' ? true : false);
             $query[0]->ultimo_dia = ($queryPreferencias[0]->ultimo_dia == 's' ? true : false);
             $query[0]->colher_senha = ($queryPreferencias[0]->colher_senha == 's' ? true : false);
+            $query[0]->redirect_link = $queryPreferencias[0]->redirect_link;
         }
         return response()->json($query[0]);
     }
