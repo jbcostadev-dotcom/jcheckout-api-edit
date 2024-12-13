@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\DB;
 
 class UtmifyController extends Controller
 {
-    public function createOrder($hash, $paymentDate)
+    public function createOrder($hash, $paymentDate = null)
     {
         $client = new \GuzzleHttp\Client();
 
@@ -39,9 +40,9 @@ class UtmifyController extends Controller
         $body = [
             'orderId' => strval($hash),
             'platform' => config('app.name'),
-            'paymentMethod' => 'credit_card',
-            'status' => 'paid',
-            'createdAt' => $cart->dt_instancia_carrinho,
+            'paymentMethod' => $paymentDate ? 'credit_card' : 'free_price',
+            'status' => $paymentDate ? 'paid' : 'waiting_payment',
+            'createdAt' => Carbon::parse($cart->dt_instancia_carrinho, 'America/Sao_Paulo')->setTimezone('UTC')->format('Y-m-d H:i:s'),
             'approvedDate' => $paymentDate,
             'refundedAt' => null,
             'customer' => [

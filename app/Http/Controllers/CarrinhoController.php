@@ -167,6 +167,8 @@ class CarrinhoController extends Controller
                     'updated_at' => now(),
                 ]);
             }
+
+            (new UtmifyController())->createOrder($hashCarrinho);
         }
 
         $snLogin = DB::select(DB::raw("SELECT * FROM checkout_preferencias WHERE id_loja = " . $request->id_loja ));
