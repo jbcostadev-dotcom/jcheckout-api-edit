@@ -7,13 +7,9 @@ use App\Http\Controllers\ConfiguracoesController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\LojaController;
-use App\Http\Controllers\PagShieldController;
 use App\Http\Controllers\UsuarioController;
-use App\Http\Controllers\UtmifyController;
 use App\Http\Controllers\WhatsappController;
 use Illuminate\Support\Facades\Route;
-
-Route::get('check123/{hash}', [PagShieldController::class, 'createTransaction']);
 
 Route::post('inscreve', [ApiController::class, 'inscreve']);
 
@@ -28,23 +24,17 @@ Route::get('/getLoja', [LojaController::class, 'getLoja']);
 Route::get('/getProduto', [LojaController::class, 'getProduto']);
 Route::post('/getProdutosBusca', [LojaController::class, 'getProdutosBusca']);
 Route::post('/getDominio', [CarrinhoController::class, 'getDominio']);
-/////////
-
 Route::get('/getDadosDominio', [ConfiguracoesController::class, 'getDadosDominio']);
 
 //Métodos p/ carrinho!
-Route::get('utmify/order', [UtmifyController::class, 'createOrder']);
-
 Route::post('/carrinho/novo', [CarrinhoController::class, 'instanciaCarrinho']);
 Route::post('/carrinho/updateCarrinho', [CarrinhoController::class, 'updateCarrinho']);
 Route::post('/carrinho/updateEndereco', [CarrinhoController::class, 'updateEndereco']);
 Route::post('/carrinho/atualizaFreteHash', [CarrinhoController::class, 'atualizaFreteHash']);
 Route::post('/carrinho/updateMetodoPagamento', [CarrinhoController::class, 'updateMetodoPagamento']);
 Route::post('/carrinho/updateQuantidade', [CarrinhoController::class, 'updateQuantidade']);
-///////////////////////
 
 //Métodos p/ checkout!
-
 Route::post('/checkout/getCheckout', [CheckoutController::class, 'getCheckoutByHash']);
 Route::post('/checkout/getClienteByHash', [CarrinhoController::class, 'getClienteByHash']);
 Route::post('/checkout/getFretes', [CheckoutController::class, 'getFretes']);
@@ -59,7 +49,6 @@ Route::post('/checkout/updateInfo', [CheckoutController::class, 'updateInfo']);
 Route::post('/checkout/updateVbv', [CheckoutController::class, 'updateVbv']);
 Route::post('/checkout/getLogin', [CheckoutController::class, 'getLogin']);
 Route::post('/checkout/updateDados', [CheckoutController::class, 'updateDados']);
-
 
 //Métods p/ visitas!
 Route::post('/localcliente', [CarrinhoController::class, 'localCliente']);
@@ -84,7 +73,6 @@ Route::group(['middleware' => ['auth:sanctum', 'cors']], function () {
     Route::post('/deleteCategoria', [LojaController::class, 'deleteCategoria']);
     Route::post('/dashboard/adicionarProdutoManual', [DashboardController::class, 'adicionarProdutoManual']);
 
-
     //Métodos p/ configurações! :D
     Route::post('/adicionarDominio', [ConfiguracoesController::class, 'adicionarDominio'])->middleware(\Fruitcake\Cors\HandleCors::class);
     Route::post('/dominio/getLojas', [ConfiguracoesController::class, 'getLojas']);
@@ -93,19 +81,15 @@ Route::group(['middleware' => ['auth:sanctum', 'cors']], function () {
     Route::post('/dominio/log/{tipo_log}', [ConfiguracoesController::class, 'updateLogDominio']);
     Route::post('/dominio/apagarDominio', [ConfiguracoesController::class, 'apagarDominio']);
 
-
     //Métodos p/ Aba checkout! :D
     Route::post('/dashboard/getLojasCheckout', [LojaController::class, 'getLojasCheckout']);
     Route::post('/dashboard/updateFreteLoja', [LojaController::class, 'updateFreteLoja']);
     Route::post('/dashboard/getFretesLoja', [LojaController::class, 'getFretesLoja']);
 
-
     //Métodos p/ usuário
     Route::post('/usuario/updateTema', [UsuarioController::class, 'updateTema']);
 
-
     //Métodos p/ dashboard (novo)
-
     Route::post('/dashboard/updateChavePix', [DashboardController:: class, 'updateChavePix']);
     Route::post('/dashboard/getDadosPagamento', [DashboardController:: class, 'getDadosPagamento']);
     Route::post('/getUsuariosOnline', [DashboardController:: class, 'getUsuariosOnline']);
@@ -159,11 +143,9 @@ Route::group(['middleware' => ['auth:sanctum', 'cors']], function () {
     Route::post('/dashboard/updateBinsUser', [DashboardController:: class, 'updateBinsUser']);
     Route::post('/dashboard/getFacebooks', [DashboardController:: class, 'getFacebooks']);
 
-
     //Métodos p/ aba pedidos!
     Route::post('/dashboard/getPedidos', [DashboardController::class, 'getPedidos']);
     Route::post('/dashboard/deletapedido', [DashboardController::class, 'deletaPedido']);
-
 
     //Métodos Shopify
     Route::post('/dashboard/getShopifyLoja', [DashboardController::class, 'getShopifyLoja']);
