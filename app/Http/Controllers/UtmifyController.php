@@ -77,7 +77,7 @@ class UtmifyController extends Controller
                 'userCommissionInCents' => 0,
                 'currency' => 'BRL'
             ],
-            'isTest' => true
+            'isTest' => false
         ];
 
         try {
