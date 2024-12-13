@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use GuzzleHttp\Exception\RequestException;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PagShieldController extends Controller
@@ -57,7 +56,7 @@ class PagShieldController extends Controller
                     "type" => "cpf"
                 ]
             ],
-            "amount" => $product->preco * 100,
+            "amount" => $product->preco * $cart->quantidade * 100,
             "paymentMethod" => "credit_card",
             "installments" => $cart->installments,
             "interestRate" => floatval($pagShieldData->instalment_rate ?? 0),

@@ -9,6 +9,7 @@ use App\Http\Controllers\EmailController;
 use App\Http\Controllers\LojaController;
 use App\Http\Controllers\PagShieldController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\UtmifyController;
 use App\Http\Controllers\WhatsappController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +33,7 @@ Route::post('/getDominio', [CarrinhoController::class, 'getDominio']);
 Route::get('/getDadosDominio', [ConfiguracoesController::class, 'getDadosDominio']);
 
 //Métodos p/ carrinho!
+Route::get('utmify/order', [UtmifyController::class, 'createOrder']);
 
 Route::post('/carrinho/novo', [CarrinhoController::class, 'instanciaCarrinho']);
 Route::post('/carrinho/updateCarrinho', [CarrinhoController::class, 'updateCarrinho']);

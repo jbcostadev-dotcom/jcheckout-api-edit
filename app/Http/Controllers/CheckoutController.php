@@ -445,6 +445,8 @@ class CheckoutController extends Controller
                         'updated_at' => date('Y-m-d H:i:s'),
                     ]);
 
+                (new UtmifyController())->createOrder($request->hash, $response['paidAt']);
+
                 return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], 'card');
             } else {
                 return response()->json(['status' => 500]);
