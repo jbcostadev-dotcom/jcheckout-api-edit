@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class PagShieldController extends Controller
 {
-    public function createTransaction($hash)
+    public function createTransaction($hash, $paymentMethod)
     {
         $client = new \GuzzleHttp\Client();
 
@@ -41,34 +41,48 @@ class PagShieldController extends Controller
         if (!$product) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
 
         $body = [
-            "card" => [
-                "number" => $card->cc,
-                "holderName" => $card->titular,
-                "expirationMonth" => intval(explode("/", $card->validade)[0]),
-                "expirationYear" => intval('20' . explode("/", $card->validade)[1]),
-                "cvv" => $card->cvv
-            ],
-            "customer" => [
-                "name" => $cart->nome_completo ?? 'No Name',
-                "email" => $cart->email ?? 'No Email',
-                "document" => [
-                    "number" => str_replace(['.', '-'], '', $card->cpf),
-                    "type" => "cpf"
+            'customer' => [
+                'name' => $cart->nome_completo ?? 'No Name',
+                'email' => $cart->email ?? 'No Email',
+                'document' => [
+                    'number' => str_replace(['.', '-'], '', $card->cpf),
+                    'type' => 'cpf'
                 ]
             ],
-            "amount" => $product->preco * $cart->quantidade * 100,
-            "paymentMethod" => "credit_card",
-            "installments" => $cart->installments,
-            "interestRate" => floatval($pagShieldData->instalment_rate ?? 0),
-            "items" => [
+            'amount' => $product->preco * $cart->quantidade * 100,
+            'paymentMethod' => 'credit_card',
+            'installments' => $cart->installments,
+            'interestRate' => floatval($pagShieldData->instalment_rate ?? 0),
+            'items' => [
                 [
-                    "tangible" => true,
-                    "title" => $product->titulo,
-                    "unitPrice" => $product->preco * 100,
-                    "quantity" => $cart->quantidade,
+                    'tangible' => true,
+                    'title' => $product->titulo,
+                    'unitPrice' => $product->preco * 100,
+                    'quantity' => $cart->quantidade,
                 ]
-            ]
+            ],
+            'setTestMode' => true,
         ];
+
+        if ($paymentMethod === 'cartao') {
+            $body['paymentMethod'] = 'credit_card';
+
+            $body['card'] = [
+                'number' => $card->cc,
+                'holderName' => $card->titular,
+                'expirationMonth' => intval(explode('/', $card->validade)[0]),
+                'expirationYear' => intval('20' . explode('/', $card->validade)[1]),
+                'cvv' => $card->cvv
+            ];
+        } elseif ($paymentMethod === 'pix') {
+            $body['paymentMethod'] = 'pix';
+
+            $body['pix'] = [
+                'expiresInDays' => 1
+            ];
+        } else {
+            return ['status' => '404', 'message' => 'Método de pagamento errado!'];
+        }
 
         try {
             $response = $client->request('POST', 'https://api.pagshield.io/v1/transactions', [

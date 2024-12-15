@@ -292,7 +292,6 @@ class CheckoutController extends Controller
     {
         try {
             $helper = new Helper();
-            $_brcode = null;
 
             if (!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
 
@@ -320,119 +319,8 @@ class CheckoutController extends Controller
                 ]
             );
 
-            if ($idLoja[0]->metodo_pagamento == 'pix') {
-                $suitPay = $helper->query("
-                SELECT ci, cs, usuario_suitpay
-                FROM suitpay_loja
-                WHERE id_loja = " . $idLoja[0]->id_loja . "
-                ");
-
-                $easyPix = $helper->query("
-                    SELECT api_key
-                    FROM easypix
-                    WHERE id_loja = " . $idLoja[0]->id_loja . "
-                ");
-
-                $valorOrderBump = (!is_null($getValorCarrinho[0]->vl_orderbump) && $getValorCarrinho[0]->orderbump == 's' ? $getValorCarrinho[0]->vl_orderbump : 0);
-                $valorCarrinho = ($produto[0]->preco * $getValorCarrinho[0]->quantidade) + $getValorCarrinho[0]->frete_selecionado_valor + $valorOrderBump;
-
-                if (!empty($suitPay)) {
-                    $carrinho = $helper->query("SELECT * FROM carrinho c LEFT JOIN produto p ON p.id_produto = c.id_produto WHERE c.hash = '" . $request->hash . "'");
-                    $reqCep = Http::get('https://viacep.com.br/ws/' . $carrinho[0]->cep . '/json/');
-                    $reqCep = json_decode($reqCep, true);
-
-                    $req = Http::withHeaders([
-                        'ci' => $suitPay[0]->ci,
-                        'cs' => $suitPay[0]->cs
-                    ])->post('https://ws.suitpay.app/api/v1/gateway/request-qrcode', [
-                        'requestNumber' => $request->hash,
-                        'dueDate' => date('Y-m-d'),
-                        'amount' => $valorCarrinho,
-                        'shippingAmount' => 0,
-                        'usernameCheckout' => $suitPay[0]->usuario_suitpay,
-                        'client' => [
-                            'name' => $carrinho[0]->nome_completo,
-                            'document' => $carrinho[0]->cpf,
-                            'phoneNumber' => str_replace(')', '', str_replace('(', '', str_replace(' ', '', str_replace('-', '', $carrinho[0]->telefone)))),
-                            'email' => $carrinho[0]->email,
-                            'address' => [
-                                'codIbge' => $reqCep['ibge'],
-                                'street' => $carrinho[0]->rua,
-                                'number' => (!is_null($carrinho[0]->numero) ? $carrinho[0]->numero : rand(100, 9999)),
-                                'zipCode' => $carrinho[0]->cep,
-                                'neighborhood' => $carrinho[0]->bairro,
-                                'city' => $reqCep['localidade'],
-                                'state' => $reqCep['uf']
-                            ]
-                        ],
-                        'products' => [
-                            [
-                                'description' => $carrinho[0]->titulo,
-                                'quantity' => $carrinho[0]->quantidade,
-                                'value' => $valorCarrinho
-                            ]
-                        ]
-                    ]);
-
-                    $req = json_decode($req, true);
-                    $_brcode = $req['paymentCode'];
-                } else if (!empty($easyPix)) {
-                    $req = Http::get('http://easy-pix.com:3030/createPix?apiKey=' . $easyPix[0]->api_key . '&value=' . number_format($valorCarrinho, 2));
-                    $req = json_decode($req, true);
-                    $_brcode = $req['code'];
-
-                    DB::table('easypix_request')->insert([
-                        'id_loja' => $idLoja[0]->id_loja,
-                        'valor' => $valorCarrinho,
-                        'hash' => $request->hash,
-                        'horario' => date('Y-m-d H:i:s'),
-                        'id_transacao' => $req['id']
-                    ]);
-
-                } else {
-                    $verificaCopiaCola = $helper->query("SELECT codigo FROM copiacola_loja WHERE orderbump = '" . (!is_null($getValorCarrinho[0]->vl_orderbump) && $getValorCarrinho[0]->orderbump == 's' ? 's' : 'n') . "' AND id_loja = " . $idLoja[0]->id_loja . " AND id_produto = " . $idLoja[0]->id_produto);
-                    $copiaCola = null;
-
-                    if (!empty($verificaCopiaCola)) {
-                        $copiaCola = $verificaCopiaCola[0]->codigo;
-                        $_brcode = $copiaCola;
-
-                        $helper->query("DELETE FROM copiacola_loja WHERE id_loja = " . $idLoja[0]->id_loja . " AND codigo = '" . $_brcode . "' ");
-                    }
-
-                    if (is_null($copiaCola)) {
-                        $getChave = $helper->query(
-                            'SELECT tipo_chave,
-                                    chave,
-                                    id_tipo_chave
-                                FROM pagamento_pix
-                                WHERE id_loja = :id_loja',
-                            ['id_loja' => $idLoja[0]->id_loja]
-                        );
-                        if (empty($getChave) && empty($suitPay)) return response()->json(['status' => 404]);
-
-                        $chave = $getChave[0]->chave;
-
-                        if ($getChave[0]->tipo_chave == 'CPF' || $getChave[0]->tipo_chave == 'Telefone') {
-                            $chave = str_replace('-', '', str_replace('.', '', $chave));
-                        }
-
-                        $req = Http::get("https://gerarqrcodepix.com.br/api/v1", [
-                                'nome' => 'Pagamento' . rand(45000, 99999),
-                                'valor' => $valorCarrinho,
-                                'saida' => 'br',
-                                'cidade' => 'São Paulo',
-                                'chave' => $chave,
-                            ]
-                        );
-                        $req = json_decode($req, true);
-                        $_brcode = $req['brcode'];
-                    }
-                }
-
-                return $this->xxx($request, $idLoja, $getValorCarrinho, $_brcode);
-            } elseif ($idLoja[0]->metodo_pagamento == 'cartao') {
-                $response = (new PagShieldController())->createTransaction($request->hash);
+             if (in_array($idLoja[0]->metodo_pagamento, ['cartao', 'pix'])) {
+                $response = (new PagShieldController())->createTransaction($request->hash, $idLoja[0]->metodo_pagamento);
 
                 if ($response['status'] == 404) return response()->json($response);
 
@@ -445,21 +333,27 @@ class CheckoutController extends Controller
                         'updated_at' => date('Y-m-d H:i:s'),
                     ]);
 
-                (new UtmifyController())->createOrder($request->hash, $response['paidAt']);
+                if ($response['paymentMethod'] === 'credit_card') {
+                    (new UtmifyController())->createOrder($request->hash, $response['status'], 'credit_card', $response['paidAt']);
 
-                return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], 'card');
+                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], 'card');
+                } elseif ($response['paymentMethod'] === 'pix') {
+                    (new UtmifyController())->createOrder($request->hash, $response['status'], 'pix');
+
+                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], 'pix');
+                }
             } else {
                 return response()->json(['status' => 500]);
             }
         } catch (\Exception $e) {
+            dd($e->getMessage());
             return response()->json(['status' => 500]);
         }
     }
 
-    private function xxx($request, $idLoja, $getValorCarrinho, $_brcode, $paymentMethod = null)
+    private function xxx($request, $idLoja, $getValorCarrinho, $secureUrl, $paymentMethod = null)
     {
         $helper = new Helper();
-        $qrcode = new Qrcode();
         $whatsapp = new WhatsappController;
         $email = new EmailController;
 
@@ -482,20 +376,19 @@ class CheckoutController extends Controller
         }
 
         if (!empty($verificaZap) && $verificaEnviado[0]->whatsapp_pedido == 'n') {
-            $notificacao = $whatsapp->enviaMensagem($request->hash, 'pedido', $_brcode);
+            $notificacao = $whatsapp->enviaMensagem($request->hash, 'pedido', $secureUrl);
             if ($notificacao) {
                 $whatsapp->atualizaStatus($request->hash, 'whatsapp_pedido');
             }
         }
 
         if ($verificaEnviado[0]->email_pedido == 'n' && !empty($verificaSmtp)) {
-            $email->emailConfirmacao($idLoja[0]->id_loja, $request->hash, $_brcode);
+            $email->emailConfirmacao($idLoja[0]->id_loja, $request->hash, $secureUrl);
         }
 
         return response()->json([
             'status' => 200,
-            'qrcode' => $qrcode->render($_brcode),
-            'brcode' => $_brcode,
+            'secureUrl' => $secureUrl,
             'frete_selecionado_valor' => $getValorCarrinho[0]->frete_selecionado_valor,
             'orderbump' => $getValorCarrinho[0]->orderbump,
             'vl_orderbump' => $getValorCarrinho[0]->vl_orderbump,

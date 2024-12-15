@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class UtmifyController extends Controller
 {
-    public function createOrder($hash, $paymentDate = null)
+    public function createOrder($hash, $paymentStatus, $paymentMethod = null, $paymentDate = null)
     {
         $client = new \GuzzleHttp\Client();
 
@@ -37,11 +37,13 @@ class UtmifyController extends Controller
 
         if (!$product) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
 
+        $statuses = ['waiting_payment', 'paid', 'refused', 'refunded', 'chargedback'];
+
         $body = [
             'orderId' => strval($hash),
             'platform' => config('app.name'),
-            'paymentMethod' => $paymentDate ? 'credit_card' : 'free_price',
-            'status' => $paymentDate ? 'paid' : 'waiting_payment',
+            'paymentMethod' => $paymentMethod ?? 'free_price',
+            'status' => in_array($paymentStatus, $statuses) ? $paymentStatus : 'refused',
             'createdAt' => Carbon::parse($cart->dt_instancia_carrinho, 'America/Sao_Paulo')->setTimezone('UTC')->format('Y-m-d H:i:s'),
             'approvedDate' => $paymentDate,
             'refundedAt' => null,

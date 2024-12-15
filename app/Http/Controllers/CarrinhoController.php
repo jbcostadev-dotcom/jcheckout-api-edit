@@ -168,7 +168,7 @@ class CarrinhoController extends Controller
                 ]);
             }
 
-            (new UtmifyController())->createOrder($hashCarrinho);
+            (new UtmifyController())->createOrder($hashCarrinho, 'waiting_payment');
         }
 
         $snLogin = DB::select(DB::raw("SELECT * FROM checkout_preferencias WHERE id_loja = " . $request->id_loja ));
