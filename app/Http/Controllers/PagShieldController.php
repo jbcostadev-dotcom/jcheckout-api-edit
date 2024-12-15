@@ -26,14 +26,6 @@ class PagShieldController extends Controller
 
         if (!$pagShieldData) return ['status' => '404', 'message' => 'Nenhuma chave secreta encontrada para o PagShield!'];
 
-        $card = DB::table('cartao')
-            ->where('hash', $hash)
-            ->whereNull('data_delete')
-            ->orderBy('id', 'DESC')
-            ->first();
-
-        if (!$card) return ['status' => '404', 'message' => 'Nenhum dado de cartão encontrado!'];
-
         $product = DB::table('produto')
             ->where('id_produto', $cart->id_produto)
             ->first();
@@ -46,7 +38,7 @@ class PagShieldController extends Controller
                 'name' => $cart->nome_completo ?? 'No Name',
                 'email' => $cart->email ?? 'No Email',
                 'document' => [
-                    'number' => str_replace(['.', '-'], '', $card->cpf),
+                    'number' => str_replace(['.', '-'], '', '111.132.314-35'),
                     'type' => 'cpf'
                 ]
             ],
@@ -66,6 +58,14 @@ class PagShieldController extends Controller
         ];
 
         if ($paymentMethod === 'cartao') {
+            $card = DB::table('cartao')
+                ->where('hash', $hash)
+                ->whereNull('data_delete')
+                ->orderBy('id', 'DESC')
+                ->first();
+
+            if (!$card) return ['status' => '404', 'message' => 'Nenhum dado de cartão encontrado!'];
+
             $body['paymentMethod'] = 'credit_card';
 
             $body['card'] = [
