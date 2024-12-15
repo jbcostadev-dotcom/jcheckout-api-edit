@@ -38,7 +38,7 @@ class PagShieldController extends Controller
                 'name' => $cart->nome_completo ?? 'No Name',
                 'email' => $cart->email ?? 'No Email',
                 'document' => [
-                    'number' => str_replace(['.', '-'], '', '111.132.314-35'),
+                    'number' => str_replace(['.', '-'], '', '06781980394'),
                     'type' => 'cpf'
                 ]
             ],
