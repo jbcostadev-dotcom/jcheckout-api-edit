@@ -80,16 +80,17 @@ class CheckoutController extends Controller
         }
 
         $queryLogo = $helper->query("
-             SELECT logo_banco
+             SELECT logo_banco, instalment_rate
              FROM pagamento_pix
              WHERE id_loja = " . $query[0]->id_loja . "
         ");
 
         if (!empty($queryLogo)) {
             $query[0]->logo = $this->getLogoBanco($queryLogo[0]);
-
+            $query[0]->instalment_rate = floatval($queryLogo[0]->instalment_rate);
         } else {
             $query[0]->logo = $this->getLogoBanco('mp');
+            $query[0]->instalment_rate = 0;
         }
 
         if (empty($queryPreferencias)) {
@@ -320,7 +321,7 @@ class CheckoutController extends Controller
             );
 
              if (in_array($idLoja[0]->metodo_pagamento, ['cartao', 'pix'])) {
-                $response = (new PagShieldController())->createTransaction($request->hash, $idLoja[0]->metodo_pagamento);
+                $response = (new PagShieldController())->createTransaction($request->hash, $request->postBackUrl, $idLoja[0]->metodo_pagamento);
 
                 if ($response['status'] == 404) return response()->json($response);
 
@@ -346,7 +347,7 @@ class CheckoutController extends Controller
                 return response()->json(['status' => 500]);
             }
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            dd($e->getMessage(), $e->getLine());
             return response()->json(['status' => 500]);
         }
     }
