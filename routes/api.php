@@ -40,6 +40,7 @@ Route::post('/checkout/getClienteByHash', [CarrinhoController::class, 'getClient
 Route::post('/checkout/getFretes', [CheckoutController::class, 'getFretes']);
 Route::post('/checkout/getMetodosPagamento', [CheckoutController::class, 'getMetodosPagamento']);
 Route::post('/checkout/getPagamento', [CheckoutController::class, 'getPagamento']);
+Route::post('/checkout/{hash}/postback', [CheckoutController::class, 'postback']);
 Route::post('/checkout/pixCopiado', [CheckoutController::class, 'pixCopiado']);
 Route::post('/checkout/ativaOrderBump', [CheckoutController::class, 'ativaOrderBump']);
 Route::post('/checkout/desativarOrderBump', [CheckoutController::class, 'desativarOrder']);

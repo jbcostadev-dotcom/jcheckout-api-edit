@@ -322,7 +322,7 @@ class CheckoutController extends Controller
             );
 
              if (in_array($idLoja[0]->metodo_pagamento, ['cartao', 'pix'])) {
-                $response = (new PagShieldController())->createTransaction($request->hash, $request->postBackUrl, $idLoja[0]->metodo_pagamento);
+                $response = (new PagShieldController())->createTransaction($request->hash, $request->postbackUrl, $idLoja[0]->metodo_pagamento);
 
                 if ($response['status'] == 404) return response()->json($response);
 
@@ -348,7 +348,6 @@ class CheckoutController extends Controller
                 return response()->json(['status' => 500]);
             }
         } catch (\Exception $e) {
-            dd($e->getMessage(), $e->getLine());
             return response()->json(['status' => 500]);
         }
     }
@@ -397,6 +396,23 @@ class CheckoutController extends Controller
             'payment_method' => $paymentMethod,
             'payment_status' => $paymentStatus,
         ]);
+    }
+
+    public function postback($hash, Request $request)
+    {
+        $data = $request->data;
+
+        DB::table('transactions')
+            ->where('hash', $hash)
+            ->update([
+                'data' => json_encode($data),
+                'status' => ucfirst($data['status']),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+        (new UtmifyController())->createOrder($hash, $data['status'], 'pix', $data['paidAt']);
+
+        return response()->json(['status' => 200]);
     }
 
     private function getCredenciais($idloja)

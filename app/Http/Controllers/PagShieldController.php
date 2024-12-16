@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class PagShieldController extends Controller
 {
-    public function createTransaction($hash, $postBackUrl, $paymentMethod)
+    public function createTransaction($hash, $postbackUrl, $paymentMethod)
     {
         $client = new \GuzzleHttp\Client();
 
@@ -33,17 +33,17 @@ class PagShieldController extends Controller
         if (!$product) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
 
         $body = [
-            'postbackUrl' => $postBackUrl,
+            'postbackUrl' => $postbackUrl,
             'customer' => [
                 'name' => $cart->nome_completo ?? 'No Name',
                 'email' => $cart->email ?? 'No Email',
                 'document' => [
-                    'number' => str_replace(['.', '-'], '', '06781980394'),
+                    'number' => str_replace(['.', '-'], '', '06781980394'), // need to change
                     'type' => 'cpf'
                 ]
             ],
-            'amount' => $product->preco * $cart->quantidade * 100,
-            'installments' => $cart->installments,
+            'amount' => intval($product->preco * $cart->quantidade * 100),
+            'installments' => intval($cart->installments),
             'interestRate' => floatval($pagShieldData->instalment_rate ?? 0),
             'items' => [
                 [
