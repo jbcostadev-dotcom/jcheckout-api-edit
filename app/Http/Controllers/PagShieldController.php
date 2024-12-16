@@ -49,8 +49,8 @@ class PagShieldController extends Controller
                 [
                     'tangible' => true,
                     'title' => $product->titulo,
-                    'unitPrice' => $product->preco * 100,
-                    'quantity' => $cart->quantidade,
+                    'unitPrice' => intval($product->preco * 100),
+                    'quantity' => intval($cart->quantidade),
                 ]
             ],
             'setTestMode' => true,
