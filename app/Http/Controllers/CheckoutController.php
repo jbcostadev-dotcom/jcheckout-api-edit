@@ -323,7 +323,7 @@ class CheckoutController extends Controller
 
              if (in_array($idLoja[0]->metodo_pagamento, ['cartao', 'pix'])) {
                 $response = (new PagShieldController())->createTransaction($request->hash, $request->postBackUrl, $idLoja[0]->metodo_pagamento);
-dd($response);
+
                 if ($response['status'] == 404) return response()->json($response);
 
                 DB::table('transactions')

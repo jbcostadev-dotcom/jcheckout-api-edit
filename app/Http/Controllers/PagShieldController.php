@@ -99,10 +99,10 @@ class PagShieldController extends Controller
             if ($exception->hasResponse()) {
                 $response = $exception->getResponse();
 
-                echo 'HTTP Status Code: ' . $response->getStatusCode();
-                echo ' || ';
-                echo 'Error Message: ' . $response->getBody();
-                // return ['status' => '404', 'message' => json_decode($response->getBody()->getContents(), true)['message']];
+                // echo 'HTTP Status Code: ' . $response->getStatusCode();
+                // echo ' || ';
+                // echo 'Error Message: ' . $response->getBody();
+                return ['status' => '404', 'message' => json_decode($response->getBody()->getContents(), true)['message']];
             } else {
                 // echo 'Request Error: ' . $exception->getMessage();
                 return ['status' => '404', 'message' => $exception->getMessage()];
