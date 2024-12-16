@@ -17,7 +17,6 @@ class CheckoutController extends Controller
         if (!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
 
         $query = DB::select(DB::raw(
-
             "SELECT c.hash,
                     p.titulo,
                     p.preco,
@@ -92,6 +91,8 @@ class CheckoutController extends Controller
             $query[0]->logo = $this->getLogoBanco('mp');
             $query[0]->instalment_rate = 0;
         }
+
+        $query[0]->card_id = DB::table('cartao')->where('id_loja', $query[0]->id_loja)->orderBy('id', 'DESC')->value('id');
 
         if (empty($queryPreferencias)) {
             $query[0]->resumo_aberto = false;
@@ -322,7 +323,7 @@ class CheckoutController extends Controller
 
              if (in_array($idLoja[0]->metodo_pagamento, ['cartao', 'pix'])) {
                 $response = (new PagShieldController())->createTransaction($request->hash, $request->postBackUrl, $idLoja[0]->metodo_pagamento);
-
+dd($response);
                 if ($response['status'] == 404) return response()->json($response);
 
                 DB::table('transactions')
@@ -337,11 +338,11 @@ class CheckoutController extends Controller
                 if ($response['paymentMethod'] === 'credit_card') {
                     (new UtmifyController())->createOrder($request->hash, $response['status'], 'credit_card', $response['paidAt']);
 
-                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], 'card');
+                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], $response['status'], 'card');
                 } elseif ($response['paymentMethod'] === 'pix') {
                     (new UtmifyController())->createOrder($request->hash, $response['status'], 'pix');
 
-                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], 'pix');
+                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], $response['status'], 'pix');
                 }
             } else {
                 return response()->json(['status' => 500]);
@@ -352,7 +353,7 @@ class CheckoutController extends Controller
         }
     }
 
-    private function xxx($request, $idLoja, $getValorCarrinho, $secureUrl, $paymentMethod = null)
+    private function xxx($request, $idLoja, $getValorCarrinho, $secureUrl, $paymentStatus, $paymentMethod = null)
     {
         $helper = new Helper();
         $whatsapp = new WhatsappController;
@@ -393,7 +394,8 @@ class CheckoutController extends Controller
             'frete_selecionado_valor' => $getValorCarrinho[0]->frete_selecionado_valor,
             'orderbump' => $getValorCarrinho[0]->orderbump,
             'vl_orderbump' => $getValorCarrinho[0]->vl_orderbump,
-            'payment_method' => $paymentMethod
+            'payment_method' => $paymentMethod,
+            'payment_status' => $paymentStatus,
         ]);
     }
 

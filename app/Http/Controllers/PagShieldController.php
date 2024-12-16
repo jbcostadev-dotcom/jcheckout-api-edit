@@ -43,7 +43,6 @@ class PagShieldController extends Controller
                 ]
             ],
             'amount' => $product->preco * $cart->quantidade * 100,
-            'paymentMethod' => 'credit_card',
             'installments' => $cart->installments,
             'interestRate' => floatval($pagShieldData->instalment_rate ?? 0),
             'items' => [
@@ -54,7 +53,7 @@ class PagShieldController extends Controller
                     'quantity' => $cart->quantidade,
                 ]
             ],
-            // 'setTestMode' => true,
+            'setTestMode' => true,
         ];
 
         if ($paymentMethod === 'cartao') {
@@ -100,10 +99,10 @@ class PagShieldController extends Controller
             if ($exception->hasResponse()) {
                 $response = $exception->getResponse();
 
-                // echo 'HTTP Status Code: ' . $response->getStatusCode();
-                // echo '\n';
-                // echo 'Error Message: ' . $response->getBody();
-                return ['status' => '404', 'message' => json_decode($response->getBody()->getContents(), true)['message']];
+                echo 'HTTP Status Code: ' . $response->getStatusCode();
+                echo ' || ';
+                echo 'Error Message: ' . $response->getBody();
+                // return ['status' => '404', 'message' => json_decode($response->getBody()->getContents(), true)['message']];
             } else {
                 // echo 'Request Error: ' . $exception->getMessage();
                 return ['status' => '404', 'message' => $exception->getMessage()];
