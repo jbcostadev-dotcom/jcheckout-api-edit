@@ -342,13 +342,13 @@ class CheckoutController extends Controller
                 } elseif ($response['paymentMethod'] === 'pix') {
                     (new UtmifyController())->createOrder($request->hash, $response['status'], 'pix');
 
-                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], $response['status'], 'pix');
+                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['pix']['qrcode'], $response['status'], 'pix');
                 }
             } else {
-                return response()->json(['status' => 500]);
+                return response()->json(['status' => 500, 'message' => 'Payment method must be card or pix']);
             }
-        } catch (\Exception $e) {
-            return response()->json(['status' => 500]);
+        } catch (\Exception $exception) {
+            return response()->json(['status' => 500, 'in' => 'CC', 'message' => $exception->getMessage()]);
         }
     }
 
@@ -357,6 +357,7 @@ class CheckoutController extends Controller
         $helper = new Helper();
         $whatsapp = new WhatsappController;
         $email = new EmailController;
+        $qrcode = new Qrcode();
 
         $helper->query('UPDATE carrinho SET finalizou_pedido = "s", data_pedido = :dt WHERE hash = :hash', ['hash' => $request->hash, 'dt' => date('Y-m-d H:i:s')]);
 
@@ -389,6 +390,8 @@ class CheckoutController extends Controller
 
         return response()->json([
             'status' => 200,
+            'qrcode' => $qrcode->render($secureUrl),
+            'brcode' => $secureUrl,
             'secureUrl' => $secureUrl,
             'frete_selecionado_valor' => $getValorCarrinho[0]->frete_selecionado_valor,
             'orderbump' => $getValorCarrinho[0]->orderbump,
