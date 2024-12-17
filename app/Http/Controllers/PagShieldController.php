@@ -109,4 +109,64 @@ class PagShieldController extends Controller
             }
         }
     }
+
+    public function checkTransaction($transactionId)
+    {
+        $client = new \GuzzleHttp\Client();
+
+        $hash = DB::table('transactions')
+            ->where('data', 'LIKE', '{"id":' . $transactionId . ',%')
+            ->value('hash');
+
+        if (!$hash) return ['status' => '404', 'message' => 'Não foi encontrado!'];
+
+        $cart = DB::table('carrinho')
+            ->where('hash', $hash)
+            ->whereNull('data_delete')
+            ->orderBy('id_carrinho', 'DESC')
+            ->first();
+
+        if (!$cart) return ['status' => '404', 'message' => 'Nenhum dado de carrinho encontrado!'];
+
+        $pagShieldData = DB::table('pagamento_pix')
+            ->where('id_loja', $cart->id_loja)
+            ->where('logo_banco', 'pagShield')
+            ->first();
+
+        if (!$pagShieldData) return ['status' => '404', 'message' => 'Nenhuma chave secreta encontrada para o PagShield!'];
+
+        try {
+            $response = $client->request('GET', "https://api.pagshield.io/v1/transactions/{$transactionId}", [
+                'headers' => [
+                    'accept' => 'application/json',
+                    'authorization' => 'Basic ' . base64_encode("{$pagShieldData->chave}:x"),
+                    'content-type' => 'application/json',
+                ],
+            ]);
+
+            $response = json_decode($response->getBody(), true);
+
+            DB::table('transactions')
+                ->where('hash', $hash)
+                ->update([
+                    'data' => json_encode($response),
+                    'status' => ucfirst($response['status']),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+
+            return ['status' => '200', 'message' => $response['status']];
+        } catch (RequestException $exception) {
+            if ($exception->hasResponse()) {
+                $response = $exception->getResponse();
+
+                // echo 'HTTP Status Code: ' . $response->getStatusCode();
+                // echo ' || ';
+                // echo 'Error Message: ' . $response->getBody();
+                return ['status' => '404', 'message' => json_decode($response->getBody()->getContents(), true)['message'] ?? 'Unknown error!'];
+            } else {
+                // echo 'Request Error: ' . $exception->getMessage();
+                return ['status' => '404', 'message' => $exception->getMessage()];
+            }
+        }
+    }
 }

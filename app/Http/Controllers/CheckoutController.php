@@ -338,11 +338,11 @@ class CheckoutController extends Controller
                 if ($response['paymentMethod'] === 'credit_card') {
                     (new UtmifyController())->createOrder($request->hash, $response['status'], 'credit_card', $response['paidAt']);
 
-                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], $response['status'], 'card');
+                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], $response['status'], $response['id'], 'card');
                 } elseif ($response['paymentMethod'] === 'pix') {
                     (new UtmifyController())->createOrder($request->hash, $response['status'], 'pix');
 
-                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['pix']['qrcode'], $response['status'], 'pix');
+                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['pix']['qrcode'], $response['status'], $response['id'], 'pix');
                 }
             } else {
                 return response()->json(['status' => 500, 'message' => 'Payment method must be card or pix']);
@@ -352,7 +352,7 @@ class CheckoutController extends Controller
         }
     }
 
-    private function xxx($request, $idLoja, $getValorCarrinho, $secureUrl, $paymentStatus, $paymentMethod = null)
+    private function xxx($request, $idLoja, $getValorCarrinho, $secureUrl, $paymentStatus, $transactionId, $paymentMethod)
     {
         $helper = new Helper();
         $whatsapp = new WhatsappController;
@@ -398,6 +398,7 @@ class CheckoutController extends Controller
             'vl_orderbump' => $getValorCarrinho[0]->vl_orderbump,
             'payment_method' => $paymentMethod,
             'payment_status' => $paymentStatus,
+            'transactionId' => $transactionId,
         ]);
     }
 
