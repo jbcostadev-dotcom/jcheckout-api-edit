@@ -25,21 +25,15 @@ class ApiController extends Controller
                 SELECT cor_tema as cor FROM usuario_preferencias WHERE id_usuario = :id_usuario
             "), ['id_usuario' => $idusuario->id_usuario]);
 
+            if (strtolower($idusuario->tipo_usuario) !== 'root') {
+                $fimToken = DB::table('usuario_pai')->where('id_usuario_pai', $idusuario->id_usuario)->value('dt_fim_token');
 
-            $sqlVerificaToken = "
-                SELECT dt_fim_token
-                FROM usuario_" . $idusuario->tipo_usuario . "
-                WHERE id_usuario_" . $idusuario->tipo_usuario . " = " . $idusuario->id_usuario . "
-            ";
-
-            $verificaToken = DB::select(DB::raw($sqlVerificaToken));
-            $fimToken = $verificaToken[0]->dt_fim_token;
-
-            if (date('Y-m-d H:i:s') > $fimToken) {
-                return response()->json([
-                    'status' => 400,
-                    'mensagem' => 'Token vencido.'
-                ]);
+                if (date('Y-m-d H:i:s') > $fimToken) {
+                    return response()->json([
+                        'status' => 400,
+                        'mensagem' => 'Token vencido.'
+                    ]);
+                }
             }
 
             return response()->json([
@@ -80,22 +74,25 @@ class ApiController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
+        $token = Hash::make($request->senha);
+
         $parentUserId = DB::table('usuario_pai')->insertGetId([
             'usuario' => $request->usuario,
             'senha' => Hash::make($request->senha),
             'dt_inicio_token' => now()->format('Y-m-d'),
-            'dt_fim_token' => now()->addMonth()->format('Y-m-d'),
+            'dt_fim_token' => now()->addYear()->format('Y-m-d'),
             'qtd_sub_usuarios' => 1,
             'qtd_lojas' => 1,
-            'token' => Hash::make($request->senha),
+            'token' => $token,
         ]);
 
         DB::table('users')->insert([
             'name' => $request->usuario,
             'username' => $request->usuario,
             'password' => Hash::make($request->senha),
-            'tipo_usuario' => 'pai',
+            'tipo_usuario' => 'user',
             'id_usuario' => $parentUserId,
+            'token_checkout' => $token,
         ]);
 
         return response()->json([

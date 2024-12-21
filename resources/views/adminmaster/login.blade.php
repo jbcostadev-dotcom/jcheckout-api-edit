@@ -68,7 +68,7 @@ img {
 
         $.post('/master/autenticausuario', { token: $("#_token").val() }, (r)=>{
             if(r.status == 200) location.href = '/master/dashboard';
-            else alert('Token inválido.');
+            else alert('Token inválido!!!');
         })
     })
 </script>
