@@ -1343,14 +1343,15 @@ class DashboardController extends Controller
     public function updatePreferenciaShopify(Request $request)
     {
         try {
-            $q = DB::select(DB::raw("
-                UPDATE shopify_loja
-                SET marcar_pedido = '" . $request->flag . "'
-                WHERE id_loja = " . $request->l . "
-            "));
+            DB::table('shopify_loja')
+                ->where('id_loja', $request->l)
+                ->update([
+                    $request->column => $request->flag
+                ]);
 
             return response()->json(['status' => 200]);
         } catch (\Exception $e) {
+            return  $e->getMessage();
             return response()->json(['status' => 500]);
         }
     }
