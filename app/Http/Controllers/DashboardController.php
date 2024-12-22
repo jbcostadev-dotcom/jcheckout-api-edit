@@ -222,7 +222,7 @@ class DashboardController extends Controller
                 'imagem4' => $imagens[4],
                 'imagem5' => $imagens[5],
                 'imagem6' => $imagens[6],
-                'id_usuario_' . $request->tipo_usuario => $request->id_usuario
+                'id_usuario_pai' => $request->id_usuario
             ]);
 
             return response()->json([
@@ -267,7 +267,7 @@ class DashboardController extends Controller
                      WHERE 1=1
                      AND DATE_FORMAT(uo.ultima_interacao, '%Y-%m-%d %H:%i:%s') >= :dt
                      AND uo.flag = 'checkout'
-                     AND l.id_usuario_" . $request->tipo_usuario . " = :id ", [
+                     AND l.id_usuario_pai" . " = :id ", [
                         'id' => $request->id_usuario,
                         'dt' => $novaData
                     ]
@@ -288,7 +288,7 @@ class DashboardController extends Controller
             $qLoja = $helper->query(
                 'SELECT id_loja
                  FROM loja
-                 WHERE id_usuario_' . $request->tipo_usuario . ' = :id_usuario',
+                 WHERE id_usuario_pai' . ' = :id_usuario',
                 ['id_usuario' => $request->id_usuario]);
 
             if (empty($qLoja)) return response()->json(['status' => 404, 'mensagem' => 'usuário sem lojas']);
@@ -364,7 +364,7 @@ class DashboardController extends Controller
                 FROM carrinho c
                 JOIN loja l ON l.id_loja = c.id_loja
                 WHERE 1=1
-                AND l.id_usuario_" . $tipoUsuario . " = " . $idUsuario . "
+                AND l.id_usuario_pai" . " = " . $idUsuario . "
                 AND c.data_delete is null
                 AND c.data_pedido is not null
             )qry,
@@ -373,7 +373,7 @@ class DashboardController extends Controller
                 FROM carrinho c
                 JOIN loja l ON l.id_loja = c.id_loja
                 WHERE 1=1
-                AND l.id_usuario_" . $tipoUsuario . " = " . $idUsuario . "
+                AND l.id_usuario_pai" . " = " . $idUsuario . "
                 AND c.data_delete is null
                 AND c.data_pedido is not null
                 AND DATE_FORMAT(c.dt_instancia_carrinho, '%Y-%m-%d') = :dthoje
@@ -384,26 +384,26 @@ class DashboardController extends Controller
                     JOIN loja l ON l.id_loja = c.id_loja
                     WHERE 1=1
                     AND c.data_delete is null
-                AND l.id_usuario_" . $tipoUsuario . " = " . $idUsuario . "
+                AND l.id_usuario_pai" . " = " . $idUsuario . "
             )qry3,
             (
                 SELECT count(c.id_carrinho) as cnt
                 FROM carrinho c
                 JOIN loja l ON l.id_loja = c.id_loja
                 WHERE 1=1
-                AND l.id_usuario_" . $tipoUsuario . " = " . $idUsuario . "
+                AND l.id_usuario_pai" . " = " . $idUsuario . "
                 AND DATE_FORMAT(c.dt_instancia_carrinho, '%Y-%m-%d') = '" . date('Y-m-d') . "'
                 AND c.data_delete is null
             )qry4,
             (
                 SELECT count(id_loja) as cnt
                 FROM loja
-                WHERE id_usuario_" . $tipoUsuario . " = " . $idUsuario . "
+                WHERE id_usuario_pai" . " = " . $idUsuario . "
             )qry5,
             (
                 SELECT DATEDIFF(dt_fim_token, SYSDATE()) as cnt
-                FROM usuario_" . $tipoUsuario . "
-                WHERE id_usuario_" . $tipoUsuario . " = " . $idUsuario . "
+                FROM usuario_pai" . "
+                WHERE id_usuario_pai" . " = " . $idUsuario . "
             )qry6
 
             ",
@@ -535,7 +535,7 @@ class DashboardController extends Controller
             $l = [];
 
             $sql = "SELECT qtd_lojas, DATEDIFF(dt_fim_token, SYSDATE()) as dias
-                    FROM usuario_" . $request->tipo_usuario . "
+                    FROM usuario_pai" . "
                     WHERE token = '" . $request->token . "'";
 
             $q1 = $helper->query($sql);
@@ -840,7 +840,7 @@ class DashboardController extends Controller
             $q = $this->helper()->query("
                 SELECT id_loja
                 FROM loja
-                WHERE id_usuario_" . $request->tipo_usuario . " = " . $request->id_usuario . "");
+                WHERE id_usuario_pai" . " = " . $request->id_usuario . "");
 
             $s = "";
             foreach ($q as $k => $v) {

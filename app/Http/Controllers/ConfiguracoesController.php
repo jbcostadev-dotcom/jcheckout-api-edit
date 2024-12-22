@@ -131,7 +131,7 @@ class ConfiguracoesController extends Controller
     public function getLojas(Request $request)
     {
         try {
-            $coluna = 'id_usuario_' . $request->tipo_usuario;
+            $coluna = 'id_usuario_pai';
 
             $query = DB::select(DB::raw(
                 'SELECT *

@@ -80,7 +80,7 @@ class LojaController extends Controller
     public function getLojas(Request $request)
     {
         try {
-            $coluna = 'id_usuario_' . $request->tipo_usuario;
+            $coluna = 'id_usuario_pai';
             $helper = new Helper();
             $query = DB::select(DB::raw(
                 'SELECT *
@@ -455,7 +455,7 @@ return response()->json([
         $verificaLojasUsuario = DB::select(DB::raw(
             "SELECT nm_loja, id_loja, cnpj_loja, email_loja, img_loja, cor_loja
              FROM loja
-             WHERE id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario .
+             WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario .
              " AND id_loja = " . $request->loja
         ));
 
@@ -466,7 +466,7 @@ return response()->json([
         }
 
         $dadosUsuario = DB::select(DB::raw(
-            "SELECT * FROM usuario_" . $tipoUsuario . " WHERE id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario
+            "SELECT * FROM usuario_pai" . " WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario
         ));
         if(empty($dadosUsuario[0])){
             return response()->json(['mensagem' => "Não autorizado"]);
@@ -484,10 +484,10 @@ return response()->json([
                     p.*,
                     pc.ds_categoria
             FROM loja l
-            JOIN produto p ON l.id_usuario_" . $tipoUsuario . " = p.id_usuario_" . $tipoUsuario . " AND p.id_loja = " . $request->loja . "
+            JOIN produto p ON l.id_usuario_pai" . " = p.id_usuario_pai" . " AND p.id_loja = " . $request->loja . "
             LEFT JOIN produto_categoria pc ON p.id_produto_categoria = pc.id_produto_categoria
             WHERE 1=1
-            AND l.id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario . "
+            AND l.id_usuario_pai" . " = " . $verificaToken[0]->id_usuario . "
             AND l.id_loja = " . $request->loja . "
             AND p.sn_loja = 's'
             "
@@ -508,7 +508,7 @@ return response()->json([
                     l.banner3_mobile
             FROM loja l
             WHERE 1=1
-            AND l.id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario . "
+            AND l.id_usuario_pai" . " = " . $verificaToken[0]->id_usuario . "
             AND l.id_loja = " . $request->loja
         ));
 
@@ -559,7 +559,7 @@ return response()->json([
         $verificaLojasUsuario = DB::select(DB::raw(
             "SELECT nm_loja, id_loja, cnpj_loja, email_loja, img_loja, cor_loja
              FROM loja
-             WHERE id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario .
+             WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario .
              " AND id_loja = " . $request->loja
         ));
         if(empty($verificaLojasUsuario[0])){
@@ -569,7 +569,7 @@ return response()->json([
         }
 
         $dadosUsuario = DB::select(DB::raw(
-            "SELECT * FROM usuario_" . $tipoUsuario . " WHERE id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario
+            "SELECT * FROM usuario_pai" . " WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario
         ));
         if(empty($dadosUsuario[0])){
             return response()->json(['mensagem' => "Não autorizado"]);
@@ -587,10 +587,10 @@ return response()->json([
                     p.*,
                     IFNULL(pc.ds_categoria, 'Promoção') as categ
             FROM loja l
-            JOIN produto p ON l.id_usuario_" . $tipoUsuario . " = p.id_usuario_" . $tipoUsuario . "
+            JOIN produto p ON l.id_usuario_pai" . " = p.id_usuario_pai" . "
             LEFT JOIN produto_categoria pc ON p.id_produto_categoria = pc.id_produto_categoria
             WHERE 1=1
-            AND l.id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario . "
+            AND l.id_usuario_pai" . " = " . $verificaToken[0]->id_usuario . "
             AND l.id_loja = " . $request->loja . "
             AND p.id_produto = ". $request->p
         ));
@@ -604,7 +604,7 @@ return response()->json([
                     l.cor_loja
             FROM loja l
             WHERE 1=1
-            AND l.id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario . "
+            AND l.id_usuario_pai" . " = " . $verificaToken[0]->id_usuario . "
             AND l.id_loja = " . $request->loja
         ));
 
@@ -863,7 +863,7 @@ return response()->json([
             && !$helper->verificaParametro($request->id_usuario)
         )return response()->json(['status' => 500]);
         try{
-            $campo = 'id_usuario_' . $request->tipo_usuario;
+            $campo = 'id_usuario_pai';
             $query = "SELECT id_loja, nm_loja
                     FROM loja
                     WHERE " . $campo . " = " . $request->id_usuario;
@@ -1013,7 +1013,7 @@ return response()->json([
             $verificaLojasUsuario = DB::select(DB::raw(
                 "SELECT nm_loja, id_loja, cnpj_loja, email_loja, img_loja, cor_loja
                     FROM loja
-                    WHERE id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario .
+                    WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario .
                     " AND id_loja = " . $request->loja
             ));
             if(empty($verificaLojasUsuario[0])){
@@ -1023,7 +1023,7 @@ return response()->json([
             }
 
             $dadosUsuario = DB::select(DB::raw(
-                "SELECT * FROM usuario_" . $tipoUsuario . " WHERE id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario
+                "SELECT * FROM usuario_pai" . " WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario
             ));
             if(empty($dadosUsuario[0])){
                 return response()->json(['mensagem' => "Não autorizado"]);
@@ -1047,10 +1047,10 @@ return response()->json([
                         p.*,
                         pc.ds_categoria
                 FROM loja l
-                JOIN produto p ON l.id_usuario_" . $tipoUsuario . " = p.id_usuario_" . $tipoUsuario . " AND p.id_loja = " . $request->loja . "
+                JOIN produto p ON l.id_usuario_pai" . " = p.id_usuario_pai" . " AND p.id_loja = " . $request->loja . "
                 LEFT JOIN produto_categoria pc ON p.id_produto_categoria = pc.id_produto_categoria
                 WHERE 1=1
-                AND l.id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario . "
+                AND l.id_usuario_pai" . " = " . $verificaToken[0]->id_usuario . "
                 AND l.id_loja = " . $request->loja . "
                 AND p.sn_loja = 's'
                 "
@@ -1071,7 +1071,7 @@ return response()->json([
                         l.banner3_mobile
                 FROM loja l
                 WHERE 1=1
-                AND l.id_usuario_" . $tipoUsuario . " = " . $verificaToken[0]->id_usuario . "
+                AND l.id_usuario_pai" . " = " . $verificaToken[0]->id_usuario . "
                 AND l.id_loja = " . $request->loja
             ));
 
