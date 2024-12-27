@@ -31,11 +31,26 @@ class UtmifyController extends Controller
             ->orderBy('id', 'DESC')
             ->first();
 
-        $product = DB::table('produto')
-            ->where('id_produto', $cart->id_produto)
-            ->first();
+        $products = DB::table('order_products AS op')
+            ->leftJoin('produto AS p', 'p.id_produto', '=', 'op.product_id')
+            ->where('op.order_id', $cart->id_carrinho)
+            ->select('p.id_produto', 'p.titulo', 'p.preco', 'o.quantity')
+            ->get();
 
-        if (!$product) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
+        if ($products->isEmpty()) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
+
+        $items = [];
+
+        foreach ($products as $product) {
+            $items[] = [
+                'id' => $product->id_produto,
+                'name' => $product->titulo,
+                'planId' => null,
+                'planName' => null,
+                'quantity' => $product->quantity,
+                'priceInCents' => $product->preco * 100
+            ];
+        }
 
         $statuses = ['waiting_payment', 'paid', 'refused', 'refunded', 'chargedback'];
 
@@ -54,16 +69,7 @@ class UtmifyController extends Controller
                 'document' => str_replace(['.', '-'], '', $cart->cpf),
                 'country' => 'BR',
             ],
-            'products' => [
-                [
-                    'id' => $product->id_produto,
-                    'name' => $product->titulo,
-                    'planId' => null,
-                    'planName' => null,
-                    'quantity' => $cart->quantidade,
-                    'priceInCents' => $product->preco * 100
-                ]
-            ],
+            'products' => $items,
             'trackingParameters' => [
                 'src' => null,
                 'sck' => null,
@@ -74,7 +80,9 @@ class UtmifyController extends Controller
                 'utm_term' => $utm->term ?? null,
             ],
             'commission' => [
-                'totalPriceInCents' => $product->preco * $cart->quantidade * 100,
+                'totalPriceInCents' => intval(collect($items)->sum(function ($item) {
+                    return $item['priceInCents'] * $item['quantity'];
+                })),
                 'gatewayFeeInCents' => 0,
                 'userCommissionInCents' => 0,
                 'currency' => 'BRL'

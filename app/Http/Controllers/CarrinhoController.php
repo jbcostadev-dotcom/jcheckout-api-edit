@@ -8,7 +8,8 @@ use PHPShopify\ShopifySDK;
 
 class CarrinhoController extends Controller
 {
-    private function getCredenciais($idloja){
+    private function getCredenciais($idloja)
+    {
         try {
             $q = DB::select(DB::raw("
                 SELECT *
@@ -25,7 +26,7 @@ class CarrinhoController extends Controller
                     CURLOPT_FOLLOWLOCATION => true
                 )
             ];
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return false;
         }
     }
@@ -216,10 +217,11 @@ class CarrinhoController extends Controller
         return response()->json($listaRetorno);
     }
 
-    public function updateCarrinho(Request $request){
+    public function updateCarrinho(Request $request)
+    {
         $helper = new Helper();
 
-        if(
+        if (
             !$helper->verificaParametro($request->hash)
         ) return response()->json(['status' => 500]);
 
@@ -232,7 +234,7 @@ class CarrinhoController extends Controller
                      telefone = :telefone,
                      email_senha = :senha
                 WHERE hash = :hash"
-            ),[
+            ), [
                 'hash' => $request->hash,
                 'nome_completo' => $request->nome_completo,
                 'email' => $request->email,
@@ -246,7 +248,7 @@ class CarrinhoController extends Controller
                 FROM loja l
                 JOIN carrinho c ON c.id_loja = l.id_loja
                 WHERE c.hash = :hash
-            "),['hash' => $request->hash]);
+            "), ['hash' => $request->hash]);
             return response()->json([
                 'status' => 200,
                 'hash' => $request->hash,
@@ -254,17 +256,18 @@ class CarrinhoController extends Controller
                 'id_checkout' => $idCheckout[0]->cd_tipo_checkout
             ]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getClienteByHash(Request $request){
+    public function getClienteByHash(Request $request)
+    {
         $helper = new Helper();
 
-        if(!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
+        if (!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
 
-        try{
+        try {
             $qry = DB::select(DB::raw("
                 SELECT nome_completo,
                        email,
@@ -272,11 +275,11 @@ class CarrinhoController extends Controller
                        telefone
                 FROM carrinho
                 WHERE hash = :hash
-            "),[
+            "), [
                 'hash' => $request->hash
             ]);
 
-            if(empty($qry[0])) return response()->json([ 'status'=> 500 ]);
+            if (empty($qry[0])) return response()->json(['status' => 500]);
 
             return response()->json([
                 'nome_completo' => $qry[0]->nome_completo,
@@ -285,18 +288,19 @@ class CarrinhoController extends Controller
                 'telefone' => $qry[0]->telefone,
                 'status' => 200
             ]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
 
         }
     }
 
-    public function updateEndereco(Request $request){
-        try{
+    public function updateEndereco(Request $request)
+    {
+        try {
             DB::select(DB::raw("
             UPDATE carrinho
             SET cep=:cep, rua=:rua, numero=:numero, bairro=:bairro, complemento=:complemento
             WHERE hash=:hash
-            "),[
+            "), [
                 'hash' => $request->hash,
                 'cep' => $request->cep,
                 'rua' => $request->rua,
@@ -306,17 +310,18 @@ class CarrinhoController extends Controller
             ]);
 
             return response()->json(['status' => 200]);
-        } catch(Exception $e){
+        } catch (Exception $e) {
             return response()->json(['status' => 500]);
 
         }
     }
 
-    public function atualizaFreteHash(Request $request){
+    public function atualizaFreteHash(Request $request)
+    {
         try {
             $helper = new Helper();
-            if(!$helper->verificaParametro($request->hash)
-            && !$helper->verificaParametro($request->frete)
+            if (!$helper->verificaParametro($request->hash)
+                && !$helper->verificaParametro($request->frete)
             ) return response()->json(['status' => 500]);
 
             $qry = DB::select(DB::raw("
@@ -324,7 +329,7 @@ class CarrinhoController extends Controller
                 SET frete_selecionado = :frete,
                     frete_selecionado_valor = :vlfrete
                 WHERE hash = :hash
-            "),[
+            "), [
                 'frete' => $request->frete,
                 'hash' => $request->hash,
                 'vlfrete' => ($request->vlfrete == null ? 0 : $request->vlfrete)
@@ -334,41 +339,43 @@ class CarrinhoController extends Controller
                 'status' => 200
             ]);
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateMetodoPagamento(Request $request){
+    public function updateMetodoPagamento(Request $request)
+    {
         try {
             $helper = new Helper();
-            if(
+            if (
                 !$helper->verificaParametro($request->hash)
-            ||  !$helper->verificaParametro($request->idpagamento)
+                || !$helper->verificaParametro($request->idpagamento)
             ) return response()->json(['status' => 500]);
 
             $q = $helper->query(
                 "UPDATE carrinho
                  SET metodo_pagamento = :idpagamento
                  WHERE hash = :hash",
-                 [
+                [
                     'hash' => $request->hash,
                     'idpagamento' => $request->idpagamento
-                 ]
+                ]
             );
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function updateQuantidade(Request $request){
+    public function updateQuantidade(Request $request)
+    {
         try {
             $helper = new Helper();
-            if(
+            if (
                 !$helper->verificaParametro($request->hash)
-            ||  !$helper->verificaParametro($request->quantidade)
+                || !$helper->verificaParametro($request->quantidade)
             ) return response()->json(['status' => 500]);
 
             $helper->query(
@@ -382,23 +389,24 @@ class CarrinhoController extends Controller
             );
 
             return response()->json(['status' => 200]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }
 
-    public function localCliente(Request $request){
+    public function localCliente(Request $request)
+    {
         try {
             $helper = new Helper();
 
-            if($request->flag == 'checkout'){
+            if ($request->flag == 'checkout') {
                 $verifica = $helper->query(
                     'SELECT id
                      FROM usuarios_online
-                     WHERE hash = "'. $request->hash. '"'
+                     WHERE hash = "' . $request->hash . '"'
                 );
 
-                if( empty($verifica[0]) ){
+                if (empty($verifica[0])) {
                     DB::table('usuarios_online')->insert([
                         'ip' => $request->ip,
                         'hash' => $request->hash,
@@ -411,7 +419,7 @@ class CarrinhoController extends Controller
                         'dispositivo' => $request->dispositivo
                     ]);
 
-                }else{
+                } else {
                     $update = $helper->query(
                         'UPDATE usuarios_online
                          SET local_checkout = "' . $request->local . '", ultima_interacao = "' . date('Y-m-d H:i:s') . '"
@@ -422,13 +430,14 @@ class CarrinhoController extends Controller
                 return response()->json(['status' => 200]);
             }
 
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
 
             return response()->json(['status' => 500]);
         }
     }
 
-    public function getDominio(Request $request){
+    public function getDominio(Request $request)
+    {
         try {
             $q = DB::select(DB::raw("
                 SELECT id_usuario_pai
@@ -436,27 +445,27 @@ class CarrinhoController extends Controller
                 WHERE id_loja = " . $request->l . "
             "));
 
-            if(empty($q)){
+            if (empty($q)) {
                 return response()->json(['status' => 404]);
             }
 
             $verifica = DB::select(DB::raw("SELECT dominio_padrao FROM loja WHERE id_loja = " . $request->l));
 
             $dominio = "";
-            if($verifica[0]->dominio_padrao == null){
+            if ($verifica[0]->dominio_padrao == null) {
                 $q2 = DB::select(DB::raw("
                     SELECT dominio
                     FROM dominio
                     WHERE id_usuario = " . $q[0]->id_usuario_pai . "
                 "));
                 $dominio = $q2[0]->dominio;
-            }else $dominio = $verifica[0]->dominio_padrao;
+            } else $dominio = $verifica[0]->dominio_padrao;
 
             return response()->json([
                 'status' => 200,
                 'dominio' => $dominio
             ]);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
     }

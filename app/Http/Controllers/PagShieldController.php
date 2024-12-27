@@ -26,11 +26,24 @@ class PagShieldController extends Controller
 
         if (!$pagShieldData) return ['status' => '404', 'message' => 'Nenhuma chave secreta encontrada para o PagShield!'];
 
-        $product = DB::table('produto')
-            ->where('id_produto', $cart->id_produto)
-            ->first();
+        $products = DB::table('order_products AS op')
+            ->leftJoin('produto AS p', 'p.id_produto', '=', 'op.product_id')
+            ->where('op.order_id', $cart->id_carrinho)
+            ->select('p.titulo', 'p.preco', 'o.quantity')
+            ->get();
 
-        if (!$product) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
+        if ($products->isEmpty()) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
+
+        $items = [];
+
+        foreach ($products as $product) {
+            $items[] = [
+                'tangible' => true,
+                'title' => $product->titulo,
+                'unitPrice' => intval($product->preco * 100),
+                'quantity' => intval($product->quantity),
+            ];
+        }
 
         $body = [
             'postbackUrl' => $postbackUrl,
@@ -42,17 +55,12 @@ class PagShieldController extends Controller
                     'type' => 'cpf'
                 ]
             ],
-            'amount' => intval($product->preco * $cart->quantidade * 100),
+            'amount' => intval(collect($items)->sum(function ($item) {
+                return $item['unitPrice'] * $item['quantity'];
+            })),
             'installments' => intval($cart->installments),
             'interestRate' => floatval($pagShieldData->instalment_rate ?? 0),
-            'items' => [
-                [
-                    'tangible' => true,
-                    'title' => $product->titulo,
-                    'unitPrice' => intval($product->preco * 100),
-                    'quantity' => intval($cart->quantidade),
-                ]
-            ],
+            'items' => $items,
             'setTestMode' => true,
         ];
 
