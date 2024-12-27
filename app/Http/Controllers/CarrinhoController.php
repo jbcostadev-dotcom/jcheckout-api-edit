@@ -265,31 +265,29 @@ class CarrinhoController extends Controller
     {
         $helper = new Helper();
 
-        if (!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
+        if (!$helper->verificaParametro($request->hash)) {
+            return response()->json(['status' => 500]);
+        }
 
         try {
-            $qry = DB::select(DB::raw("
-                SELECT nome_completo,
-                       email,
-                       cpf,
-                       telefone
-                FROM carrinho
-                WHERE hash = :hash
-            "), [
-                'hash' => $request->hash
-            ]);
+            $qry = DB::table('carrinho')
+                ->select('nome_completo', 'email', 'cpf', 'telefone')
+                ->where('hash', $request->hash)
+                ->first();
 
-            if (empty($qry[0])) return response()->json(['status' => 500]);
+            if (!$qry) {
+                return response()->json(['status' => 500]);
+            }
 
             return response()->json([
-                'nome_completo' => $qry[0]->nome_completo,
-                'email' => $qry[0]->email,
-                'cpf' => $qry[0]->cpf,
-                'telefone' => $qry[0]->telefone,
+                'nome_completo' => $qry->nome_completo,
+                'email' => $qry->email,
+                'cpf' => $qry->cpf,
+                'telefone' => $qry->telefone,
                 'status' => 200
             ]);
         } catch (\Exception $e) {
-
+            return response()->json(['status' => 500, 'error' => 'An error occurred.']);
         }
     }
 

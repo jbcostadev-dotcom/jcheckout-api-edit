@@ -13,99 +13,83 @@ class CheckoutController extends Controller
     public function getCheckoutByHash(Request $request)
     {
         $helper = new Helper();
+        $hash = $request->hash;
 
-        if (!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
-
-        $query = DB::select(DB::raw(
-            "SELECT c.hash,
-                    p.titulo,
-                    p.preco,
-                    p.imagem1,
-                    l.nm_loja,
-                    l.cd_tipo_checkout,
-                    l.cnpj_loja,
-                    l.email_loja,
-                    l.img_loja,
-                    l.cor_loja,
-                    c.quantidade,
-                    l.id_loja,
-                    c.variacao,
-                    l.frete_padrao
-             FROM carrinho c
-             JOIN produto p ON c.id_produto = p.id_produto
-             JOIN loja l ON c.id_loja = l.id_loja
-             WHERE c.hash = '" . $request->hash . "'"
-        ));
-
-        if (empty($query[0])) return response()->json(['status' => 500]);
-
-        $queryPixelFb = $helper->query("
-                    SELECT pixel_1, pixel_2, pixel_3, pixel_4, pixel_5, pixel_6
-                    FROM pixel_facebook
-                    WHERE id_loja = :id
-                ", ['id' => $query[0]->id_loja]);
-
-        $query[0]->pixelfb = (!empty($queryPixelFb[0]) ? $queryPixelFb[0] : []);
-
-        $queryPixelTaboola = $helper->query("
-             SELECT *
-             FROM pixel_taboola
-             WHERE id_loja = :id
-        ",
-            ['id' => $query[0]->id_loja]);
-
-        $query[0]->pixeltaboola = (!empty($queryPixelTaboola) ? $queryPixelTaboola[0]->id_taboola : null);
-
-        $queryPreferencias = $helper->query("
-             SELECT resumo_aberto, ultimo_dia, colher_senha, redirect_link
-             FROM checkout_preferencias
-             WHERE id_loja = :id
-        ", ['id' => $query[0]->id_loja]);
-
-        $queryCartao = $helper->query("
-             SELECT *
-             FROM cartao_loja
-             WHERE id_loja = " . $query[0]->id_loja . "
-        ");
-
-        if (!empty($queryCartao)) {
-            $query[0]->cc = true;
-            $query[0]->vbv = ($queryCartao[0]->vbv == 's' ? true : false);
-            $query[0]->mensagem_erro = $queryCartao[0]->mensagem_erro;
-        } else {
-            $query[0]->cc = false;
-            $query[0]->vbv = false;
-            $query[0]->mensagem_erro = false;
+        if (!$helper->verificaParametro($hash)) {
+            return response()->json(['status' => 500]);
         }
 
-        $queryLogo = $helper->query("
-             SELECT logo_banco, instalment_rate
-             FROM pagamento_pix
-             WHERE id_loja = " . $query[0]->id_loja . "
-        ");
+        $query = DB::table('carrinho as c')
+            ->join('produto as p', 'c.id_produto', '=', 'p.id_produto')
+            ->join('loja as l', 'c.id_loja', '=', 'l.id_loja')
+            ->select([
+                'c.hash', 'p.titulo', 'p.preco', 'p.imagem1',
+                'l.nm_loja', 'l.cd_tipo_checkout', 'l.cnpj_loja',
+                'l.email_loja', 'l.img_loja', 'l.cor_loja',
+                'c.quantidade', 'l.id_loja', 'c.variacao',
+                'l.frete_padrao'
+            ])
+            ->where('c.hash', $hash)
+            ->first();
 
-        if (!empty($queryLogo)) {
-            $query[0]->logo = $this->getLogoBanco($queryLogo[0]);
-            $query[0]->instalment_rate = floatval($queryLogo[0]->instalment_rate);
-        } else {
-            $query[0]->logo = $this->getLogoBanco('mp');
-            $query[0]->instalment_rate = 0;
+        if (empty($query)) {
+            return response()->json(['status' => 500]);
         }
 
-        $query[0]->card_id = DB::table('cartao')->where('id_loja', $query[0]->id_loja)->orderBy('id', 'DESC')->value('id');
+        $query->pixelfb = DB::table('pixel_facebook')
+                ->where('id_loja', $query->id_loja)
+                ->select([
+                    'pixel_1', 'pixel_2', 'pixel_3', 'pixel_4',
+                    'pixel_5', 'pixel_6'
+                ])
+                ->first() ?? [];
 
-        if (empty($queryPreferencias)) {
-            $query[0]->resumo_aberto = false;
-            $query[0]->ultimo_dia = false;
-            $query[0]->colher_senha = false;
-            $query[0]->redirect_link = null;
-        } else {
-            $query[0]->resumo_aberto = ($queryPreferencias[0]->resumo_aberto == 's' ? true : false);
-            $query[0]->ultimo_dia = ($queryPreferencias[0]->ultimo_dia == 's' ? true : false);
-            $query[0]->colher_senha = ($queryPreferencias[0]->colher_senha == 's' ? true : false);
-            $query[0]->redirect_link = $queryPreferencias[0]->redirect_link;
+        $query->pixeltaboola = DB::table('pixel_taboola')
+            ->where('id_loja', $query->id_loja)
+            ->value('id_taboola');
+
+        $preferences = DB::table('checkout_preferencias')
+            ->where('id_loja', $query->id_loja)
+            ->select([
+                'resumo_aberto', 'ultimo_dia', 'colher_senha', 'redirect_link'
+            ])
+            ->first();
+
+        $query->resumo_aberto = optional($preferences)->resumo_aberto == 's';
+        $query->ultimo_dia = optional($preferences)->ultimo_dia == 's';
+        $query->colher_senha = optional($preferences)->colher_senha == 's';
+        $query->redirect_link = optional($preferences)->redirect_link;
+
+        $queryCartao = DB::table('cartao_loja')
+            ->where('id_loja', $query->id_loja)
+            ->first();
+
+        $query->cc = !empty($queryCartao);
+        $query->vbv = $query->cc && $queryCartao->vbv == 's';
+        $query->mensagem_erro = $query->cc ? $queryCartao->mensagem_erro : false;
+
+        $queryLogo = DB::table('pagamento_pix')
+            ->where('id_loja', $query->id_loja)
+            ->select(['logo_banco', 'instalment_rate'])
+            ->first();
+
+        $query->logo = $this->getLogoBanco(optional($queryLogo)->logo_banco ?? 'mp');
+        $query->instalment_rate = optional($queryLogo)->instalment_rate ?? 0;
+
+        $query->card_id = DB::table('cartao')
+            ->where('id_loja', $query->id_loja)
+            ->orderBy('id', 'DESC')
+            ->value('id');
+
+        if ($request->filled('step')) {
+            DB::table('carrinho')
+                ->where('hash', $hash)
+                ->update([
+                    'step' => $request->step
+                ]);
         }
-        return response()->json($query[0]);
+
+        return response()->json($query);
     }
 
     public function getFretes(Request $request)
@@ -295,54 +279,65 @@ class CheckoutController extends Controller
         try {
             $helper = new Helper();
 
-            if (!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
+            if (!$helper->verificaParametro($request->hash)) {
+                return response()->json(['status' => 500]);
+            }
 
-            $idLoja = $helper->query(
-                'SELECT id_loja, metodo_pagamento, id_produto
-                 FROM carrinho
-                 WHERE hash = :hash',
-                ['hash' => $request->hash]
-            );
+            $shop = DB::table('carrinho')
+                ->select('id_loja', 'metodo_pagamento', 'id_produto')
+                ->where('hash', $request->hash)
+                ->first();
 
-            if (empty($idLoja)) return response()->json(['status' => 404]);
+            if (empty($shop)) {
+                return response()->json(['status' => 404]);
+            }
 
-            $produto = $helper->query(
-                'SELECT titulo, preco
-                 FROM produto
-                 WHERE id_produto = :id_produto',
-                ['id_produto' => $idLoja[0]->id_produto]
-            );
+            $getValorCarrinho = DB::table('carrinho')
+                ->select('quantidade', 'frete_selecionado_valor', 'vl_orderbump', 'orderbump')
+                ->where('hash', $request->hash)
+                ->first();
 
-            $getValorCarrinho = $helper->query(
-                "SELECT quantidade, frete_selecionado_valor, vl_orderbump, orderbump
-                     FROM carrinho
-                     WHERE hash = :hash", [
-                    'hash' => $request->hash
-                ]
-            );
+            if (in_array($shop->metodo_pagamento, ['cartao', 'pix'])) {
+                $response = (new PagShieldController())->createTransaction(
+                    $request->hash, $request->postbackUrl, $shop->metodo_pagamento
+                );
 
-             if (in_array($idLoja[0]->metodo_pagamento, ['cartao', 'pix'])) {
-                $response = (new PagShieldController())->createTransaction($request->hash, $request->postbackUrl, $idLoja[0]->metodo_pagamento);
+                if ($response['status'] == 404) {
+                    return response()->json($response);
+                }
 
-                if ($response['status'] == 404) return response()->json($response);
+                DB::table('transactions')->insert([
+                    'hash' => $request->hash,
+                    'data' => json_encode($response),
+                    'status' => ucfirst($response['status']),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
 
-                DB::table('transactions')
-                    ->insert([
-                        'hash' => $request->hash,
-                        'data' => json_encode($response),
-                        'status' => ucfirst($response['status']),
-                        'created_at' => date('Y-m-d H:i:s'),
-                        'updated_at' => date('Y-m-d H:i:s'),
-                    ]);
+                DB::table('carrinho')
+                    ->where('hash', $request->hash)
+                    ->update(['step' => null]);
 
                 if ($response['paymentMethod'] === 'credit_card') {
-                    (new UtmifyController())->createOrder($request->hash, $response['status'], 'credit_card', $response['paidAt']);
+                    (new UtmifyController())->createOrder(
+                        $request->hash, $response['status'], 'credit_card', $response['paidAt']
+                    );
 
-                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['secureUrl'], $response['status'], $response['id'], 'card');
+                    return $this->xxx(
+                        $request, $shop, $getValorCarrinho,
+                        $response['secureUrl'], $response['status'],
+                        $response['id'], 'card'
+                    );
                 } elseif ($response['paymentMethod'] === 'pix') {
-                    (new UtmifyController())->createOrder($request->hash, $response['status'], 'pix');
+                    (new UtmifyController())->createOrder(
+                        $request->hash, $response['status'], 'pix'
+                    );
 
-                    return $this->xxx($request, $idLoja, $getValorCarrinho, $response['pix']['qrcode'], $response['status'], $response['id'], 'pix');
+                    return $this->xxx(
+                        $request, $shop, $getValorCarrinho,
+                        $response['pix']['qrcode'], $response['status'],
+                        $response['id'], 'pix'
+                    );
                 }
             } else {
                 return response()->json(['status' => 500, 'message' => 'Payment method must be card or pix']);
@@ -352,7 +347,7 @@ class CheckoutController extends Controller
         }
     }
 
-    private function xxx($request, $idLoja, $getValorCarrinho, $secureUrl, $paymentStatus, $transactionId, $paymentMethod)
+    private function xxx($request, $shop, $getValorCarrinho, $secureUrl, $paymentStatus, $transactionId, $paymentMethod)
     {
         $helper = new Helper();
         $whatsapp = new WhatsappController;
@@ -361,17 +356,17 @@ class CheckoutController extends Controller
 
         $helper->query('UPDATE carrinho SET finalizou_pedido = "s", data_pedido = :dt WHERE hash = :hash', ['hash' => $request->hash, 'dt' => date('Y-m-d H:i:s')]);
 
-        $verificaZap = $helper->query("SELECT instance_id, instance_token FROM whatsapp_loja WHERE id_loja = " . $idLoja[0]->id_loja);
+        $verificaZap = $helper->query("SELECT instance_id, instance_token FROM whatsapp_loja WHERE id_loja = " . $shop->id_loja);
         $verificaEnviado = $helper->query("SELECT whatsapp_pedido, email_pedido FROM carrinho WHERE hash = '" . $request->hash . "'");
-        $verificaSmtp = $helper->query("SELECT id, opcao_selecionada FROM smtp_loja WHERE id_loja = " . $idLoja[0]->id_loja);
-        $verificaShopify = $helper->query("SELECT * FROM shopify_loja WHERE marcar_pedido = 's' AND id_loja = " . $idLoja[0]->id_loja);
+        $verificaSmtp = $helper->query("SELECT id, opcao_selecionada FROM smtp_loja WHERE id_loja = " . $shop->id_loja);
+        $verificaShopify = $helper->query("SELECT * FROM shopify_loja WHERE marcar_pedido = 's' AND id_loja = " . $shop->id_loja);
         $verificaShopify2 = $helper->query("SELECT pedido_shopify FROM carrinho WHERE hash ='" . $request->hash . "'");
 
         if (!empty($verificaShopify) && $verificaShopify2[0]->pedido_shopify == 'n') {
             $objCarrinho = $helper->query("SELECT * FROM carrinho c JOIN produto p ON c.id_produto = p.id_produto WHERE hash = '" . $request->hash . "'");
             $objCarrinho = $objCarrinho[0];
             try {
-                $this->finalizaPedido($idLoja[0]->id_loja, $objCarrinho);
+                $this->finalizaPedido($shop->id_loja, $objCarrinho);
             } catch (\Exception $e) {
                 //....
             }
@@ -385,7 +380,7 @@ class CheckoutController extends Controller
         }
 
         if ($verificaEnviado[0]->email_pedido == 'n' && !empty($verificaSmtp)) {
-            $email->emailConfirmacao($idLoja[0]->id_loja, $request->hash, $secureUrl);
+            $email->emailConfirmacao($shop->id_loja, $request->hash, $secureUrl);
         }
 
         return response()->json([
@@ -393,9 +388,9 @@ class CheckoutController extends Controller
             'qrcode' => $qrcode->render($secureUrl),
             'brcode' => $secureUrl,
             'secureUrl' => $secureUrl,
-            'frete_selecionado_valor' => $getValorCarrinho[0]->frete_selecionado_valor,
-            'orderbump' => $getValorCarrinho[0]->orderbump,
-            'vl_orderbump' => $getValorCarrinho[0]->vl_orderbump,
+            'frete_selecionado_valor' => $getValorCarrinho->frete_selecionado_valor,
+            'orderbump' => $getValorCarrinho->orderbump,
+            'vl_orderbump' => $getValorCarrinho->vl_orderbump,
             'payment_method' => $paymentMethod,
             'payment_status' => $paymentStatus,
             'transactionId' => $transactionId,
