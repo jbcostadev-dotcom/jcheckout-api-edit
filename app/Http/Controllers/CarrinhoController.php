@@ -30,148 +30,175 @@ class CarrinhoController extends Controller
         }
     }
 
-    public function instanciaCarrinho(Request $request){
+    public function instanciaCarrinho(Request $request)
+    {
         $helper = new Helper();
 
-        if(
+        if (
             !$helper->verificaParametro($request->id_loja)
-            || !$helper->verificaParametro($request->id_produto)
-        ) return response()->json([ 'status' => 500 ]);
+            || empty($request->products)
+        ) return response()->json(['status' => 500]);
 
 
-        if($request->shopify == 's'){
+        // "shopify" => "s" // is_shopify
+        // "is" => "9769068986643" // product_id
+        // "vs" => "undefined" // variant_id
+        // "p" => "9769068986643" // product_id
+        // "q" => "1" // quantity
+        // "l" => "70" // loja_id
+        // "v" => "Tamanho: 400G|" //varient
 
-            $variacao = $request->vs;
+        $products = json_decode(json_encode($request->products));
 
-            $flag = "";
+        if ($request->shopify == 's') {
+            foreach ($products as $product) {
+                $variacao = $product->svid;
 
-            if($variacao != null) $flag = "AND id_variante_shopify is not null";
+                $flag = "";
 
-            $q = DB::select(DB::raw("
-                SELECT id_produto
-                FROM produto
-                WHERE id_shopify = '" . $request->is . "'
-                AND id_variante_shopify = '" . $variacao . "'
-            "));
+                if ($variacao != null) $flag = "AND id_variante_shopify is not null";
 
-            if(empty($q)){
-                $config = $this->getCredenciais($request->id_loja);
-                $shopify = new ShopifySDK($config);
-                $produto = $shopify->Product($request->is)->get();
-                $imagem = null;
-                $preco;
+                $q = DB::select(DB::raw("
+                    SELECT id_produto
+                    FROM produto
+                    WHERE id_shopify = '" . $product->spid . "'
+                    AND id_variante_shopify = '" . $variacao . "'
+                "));
 
-                if($request->vs != 'undefined' && !is_null($request->vs)){
-                    $l = [];
-                    foreach($produto['variants'] as $k => $v){
-                        if($v['id'] == $request->vs) $l = $v;
-                    }
+                if (empty($q)) {
+                    $config = $this->getCredenciais($request->id_loja);
+                    $shopify = new ShopifySDK($config);
+                    $produto = $shopify->Product($product->spid)->get();
+                    $imagem = null;
+                    $preco;
 
-                    $imageId = null;
-                    $preco = $l['price'];
-
-                    if(!empty($l)){
-                        if(!is_null($l['image_id'])){
-                            $imageId = $l['image_id'];
+                    if ($product->svid != 'undefined' && !is_null($product->svid)) {
+                        $l = [];
+                        foreach ($produto['variants'] as $k => $v) {
+                            if ($v['id'] == $product->svid) $l = $v;
                         }
-                    }
 
-                    foreach($produto['images'] as $k => $v){
-                        if($v['id'] == $imageId){
-                            $imagem = $v['src'];
+                        $imageId = null;
+                        $preco = $l['price'];
+
+                        if (!empty($l)) {
+                            if (!is_null($l['image_id'])) {
+                                $imageId = $l['image_id'];
+                            }
                         }
+
+                        foreach ($produto['images'] as $k => $v) {
+                            if ($v['id'] == $imageId) {
+                                $imagem = $v['src'];
+                            }
+                        }
+
+                        if (is_null($imagem)) {
+                            $imagem = $produto['images'][0]['src'];
+                        }
+
+                    } else {
+                        $preco = $produto['variants'][0]['price'];
+                        if (!is_null($produto['images'][0]['src'])) $imagem = $produto['images'][0]['src'];
                     }
 
-                    if(is_null($imagem)){
-                        $imagem = $produto['images'][0]['src'];
+
+                    $variacao = ($product->svid != 'undefined' && $product->svid != null ? $product->svid : $produto['variants'][0]['id']);
+
+                    $q = DB::select(DB::raw("SELECT id_usuario_pai FROM loja WHERE id_loja = " . $request->id_loja));
+                    $q2 = DB::select(DB::raw("SELECT * FROM produto WHERE imagem1 = '" . $imagem . "' AND id_shopify = '" . $product->spid . "' AND id_variante_shopify = '" . $variacao . "'"));
+
+                    if (empty($q2)) {
+                        DB::table('produto')->insert([
+                            'titulo' => $produto['title'],
+                            'descricao' => '<br>',
+                            'preco' => $preco,
+                            'imagem1' => $imagem,
+                            'id_usuario_pai' => $q[0]->id_usuario_pai,
+                            'id_loja' => $request->id_loja,
+                            'id_shopify' => $product->spid,
+                            'id_variante_shopify' => $variacao
+                        ]);
                     }
 
-                }else{
-                    $preco = $produto['variants'][0]['price'];
-                    if(!is_null($produto['images'][0]['src'])) $imagem = $produto['images'][0]['src'];
+
+                    $q = DB::select(DB::raw("SELECT id_produto FROM produto WHERE id_shopify = " . $product->spid));
+                    $product->id = $q[0]->id_produto;
+                } else {
+                    $product->id = $q[0]->id_produto;
                 }
-
-
-                $variacao = ($request->vs != 'undefined' && $request->vs != null ? $request->vs : $produto['variants'][0]['id']);
-
-                $q = DB::select(DB::raw("SELECT id_usuario_pai FROM loja WHERE id_loja = " . $request->id_loja));
-                $q2 = DB::select(DB::raw("SELECT * FROM produto WHERE imagem1 = '" . $imagem . "' AND id_shopify = '" . $request->is . "' AND id_variante_shopify = '" . $variacao . "'"));
-
-                if(empty($q2)){
-                    DB::table('produto')->insert([
-                        'titulo' => $produto['title'],
-                        'descricao' => '<br>',
-                        'preco' => $preco,
-                        'imagem1' => $imagem,
-                        'id_usuario_pai' => $q[0]->id_usuario_pai,
-                        'id_loja' => $request->id_loja,
-                        'id_shopify' => $request->is,
-                        'id_variante_shopify' => $variacao
-                    ]);
-                }
-
-
-                $q = DB::select(DB::raw("SELECT id_produto FROM produto WHERE id_shopify = " . $request->is));
-                $request->id_produto = $q[0]->id_produto;
-            }else{
-                $request->id_produto = $q[0]->id_produto;
-
             }
+        } else {
+            return response()->json(['status' => 500]);
         }
 
-        $hashCarrinho = strtotime(date('Y-m-d H:i:s')) . $request->id_loja . $request->id_produto . ($request->shopify == 's' ?  rand(5555,100000) : rand(1,10));
+        $hashCarrinho = date('YmdHisu') . $request->id_loja . ($request->shopify == 's' ? rand(5555, 100000) : rand(1, 10));
 
         $verificaHash = $helper->query("SELECT id_carrinho FROM carrinho WHERE hash = '" . $hashCarrinho . "'");
 
-
-        $qry = DB::select(DB::raw("
-            SELECT l.nm_loja,
-                   l.cd_tipo_checkout as id_checkout,
-                   l.cnpj_loja,
-                   l.email_loja,
-                   l.img_loja,
-                   l.cor_loja
-            FROM loja l
-            JOIN produto p ON l.id_loja = p.id_loja AND p.id_produto = :id_produto
-            WHERE 1=1
-            AND l.id_loja = :id_loja
-        "),[
-            'id_loja' => $request->id_loja,
-            'id_produto' => $request->id_produto
-        ]);
-
-        if(empty($qry)) return response()->json(['status' => 404]);
-
-        if(empty($verificaHash[0])){
-            $idCarrinho = DB::table('carrinho')->insertGetId([
+        foreach ($products as $product) {
+            $qry = DB::select(DB::raw("
+                SELECT l.nm_loja,
+                       l.cd_tipo_checkout as id_checkout,
+                       l.cnpj_loja,
+                       l.email_loja,
+                       l.img_loja,
+                       l.cor_loja
+                FROM loja l
+                JOIN produto p ON l.id_loja = p.id_loja AND p.id_produto = :id_produto
+                WHERE 1=1
+                AND l.id_loja = :id_loja
+            "), [
                 'id_loja' => $request->id_loja,
-                'id_produto' => $request->id_produto,
-                'hash' => $hashCarrinho,
-                'dt_instancia_carrinho' => date('Y-m-d H:i:s'),
-                'quantidade' => $request->quantidade,
-                'variacao' => (!is_null($request->variacao) ? $request->variacao : null),
+                'id_produto' => $product->id
             ]);
 
-            $utm = $request->utm;
+            if (empty($qry)) return response()->json(['status' => 404]);
+        }
 
-            if ($utm['source'] || $utm['campaign'] || $utm['medium'] || $utm['content'] || $utm['term'] || $utm['xcod']) {
-                DB::table('utms')->insert([
-                    'cart_id' => $idCarrinho,
-                    'source' => $utm['source'],
-                    'campaign' => $utm['campaign'],
-                    'medium' => $utm['medium'],
-                    'content' => $utm['content'],
-                    'term' => $utm['term'],
-                    'xcod' => $utm['xcod'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
+        if (empty($verificaHash[0])) {
+            DB::transaction(function () use ($request, $products, $hashCarrinho) {
+                $idCarrinho = DB::table('carrinho')->insertGetId([
+                    'id_loja' => $request->id_loja,
+                    'hash' => $hashCarrinho,
+                    'dt_instancia_carrinho' => date('Y-m-d H:i:s'),
+                    'quantidade' => 0,
+                    'variacao' => 0,
                 ]);
-            }
+
+                foreach ($products as $product) {
+                    DB::table('order_product')
+                        ->insert([
+                            'order_id' => $idCarrinho,
+                            'product_id' => $product->id,
+                            'quantity' => $product->qty,
+                            'variant' => $product->variant,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                }
+
+                $utm = $request->utm;
+
+                if ($utm['source'] || $utm['campaign'] || $utm['medium'] || $utm['content'] || $utm['term'] || $utm['xcod']) {
+                    DB::table('utms')->insert([
+                        'cart_id' => $idCarrinho,
+                        'source' => $utm['source'],
+                        'campaign' => $utm['campaign'],
+                        'medium' => $utm['medium'],
+                        'content' => $utm['content'],
+                        'term' => $utm['term'],
+                        'xcod' => $utm['xcod'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            });
 
             (new UtmifyController())->createOrder($hashCarrinho, 'waiting_payment');
         }
 
-        $snLogin = DB::select(DB::raw("SELECT * FROM checkout_preferencias WHERE id_loja = " . $request->id_loja ));
+        $snLogin = DB::select(DB::raw("SELECT * FROM checkout_preferencias WHERE id_loja = " . $request->id_loja));
 
 
         $listaRetorno = [
