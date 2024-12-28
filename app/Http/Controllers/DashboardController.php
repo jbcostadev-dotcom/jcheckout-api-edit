@@ -304,6 +304,8 @@ class DashboardController extends Controller
             $inicio = ($request->inicio == null || $request->inicio == 'undefined' ? date('Y-m') : $request->inicio);
             $fim = ($request->fim == null || $request->fim == 'undefined' ? date('Y-m') : $request->fim);
 
+            $abandoned = $request->abandoned === 'true' ? 'AND c.step IS NOT NULL' : null;
+
             $qry = "SELECT p.titulo,
                            p.preco,
                            c.id_carrinho,
@@ -324,7 +326,8 @@ class DashboardController extends Controller
                            c.email_senha,
                            t.status,
                            IFNULL(c.vl_orderbump,0) as valor_orderbump,
-                           DATE_FORMAT(c.data_pedido, '%d/%m/%Y %H:%i') as data_pedido
+                           DATE_FORMAT(c.data_pedido, '%d/%m/%Y %H:%i') as data_pedido,
+                           CASE WHEN c.step = 1 THEN 'ETAPA 1' WHEN c.step = 2 THEN 'ETAPA 2' WHEN c.step = 3 THEN 'ETAPA 3' ELSE '0' END AS withdrawal
                     FROM carrinho c
                     JOIN produto p ON p.id_produto = c.id_produto
                     LEFT JOIN transactions t ON t.hash = c.hash
@@ -334,7 +337,9 @@ class DashboardController extends Controller
                     AND DATE_FORMAT(c.data_pedido, '%Y-%m') <= '" . $fim . "'
                     AND c.finalizou_pedido = 's'
                     AND c.id_loja in (" . $idl . ")
+                    {$abandoned}
                     ORDER BY c.data_pedido DESC";
+
             $q = $helper->query($qry);
 
             return response()->json($q);
