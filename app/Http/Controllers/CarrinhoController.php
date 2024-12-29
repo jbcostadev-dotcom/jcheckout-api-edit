@@ -468,4 +468,14 @@ class CarrinhoController extends Controller
         }
     }
 
+    public function getMultiProductsInCart(Request $request)
+    {
+        if (!$request->filled('shop_id')) return response()->json(['status' => 404]);
+
+        return boolval(
+            DB::table('shopify_loja')
+                ->where('id_loja', $request->shop_id)
+                ->value('multiple_products_in_cart')
+        );
+    }
 }
