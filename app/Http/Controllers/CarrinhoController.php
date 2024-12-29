@@ -156,6 +156,7 @@ class CarrinhoController extends Controller
                     'dt_instancia_carrinho' => date('Y-m-d H:i:s'),
                     'quantidade' => 0,
                     'variacao' => 0,
+                    'id_produto' => $products[0]->id
                 ]);
 
                 foreach ($products as $product) {
