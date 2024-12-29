@@ -33,7 +33,7 @@ Route::post('/carrinho/updateEndereco', [CarrinhoController::class, 'updateEnder
 Route::post('/carrinho/atualizaFreteHash', [CarrinhoController::class, 'atualizaFreteHash']);
 Route::post('/carrinho/updateMetodoPagamento', [CarrinhoController::class, 'updateMetodoPagamento']);
 Route::post('/carrinho/updateQuantidade', [CarrinhoController::class, 'updateQuantidade']);
-Route::post('/carrinho/getMultiProductsInCart', [CarrinhoController::class, 'getMultiProductsInCart']);
+Route::post('/carrinho/hasMultiProductsInCart', [CarrinhoController::class, 'hasMultiProductsInCart']);
 
 //Métodos p/ checkout!
 Route::post('/checkout/getCheckout', [CheckoutController::class, 'getCheckoutByHash']);
