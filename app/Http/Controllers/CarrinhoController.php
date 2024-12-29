@@ -40,15 +40,6 @@ class CarrinhoController extends Controller
             || empty($request->products)
         ) return response()->json(['status' => 500]);
 
-
-        // "shopify" => "s" // is_shopify
-        // "is" => "9769068986643" // product_id
-        // "vs" => "undefined" // variant_id
-        // "p" => "9769068986643" // product_id
-        // "q" => "1" // quantity
-        // "l" => "70" // loja_id
-        // "v" => "Tamanho: 400G|" //varient
-
         $products = json_decode(json_encode($request->products));
 
         if ($request->shopify == 's') {
