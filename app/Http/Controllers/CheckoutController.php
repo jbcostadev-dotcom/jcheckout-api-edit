@@ -20,14 +20,11 @@ class CheckoutController extends Controller
         }
 
         $query = DB::table('carrinho as c')
-            ->join('produto as p', 'c.id_produto', '=', 'p.id_produto')
             ->join('loja as l', 'c.id_loja', '=', 'l.id_loja')
             ->select([
-                'c.hash', 'p.titulo', 'p.preco', 'p.imagem1',
-                'l.nm_loja', 'l.cd_tipo_checkout', 'l.cnpj_loja',
-                'l.email_loja', 'l.img_loja', 'l.cor_loja',
-                'c.quantidade', 'l.id_loja', 'c.variacao',
-                'l.frete_padrao'
+                'c.id_carrinho AS order_id', 'c.hash', 'l.id_loja',
+                'l.nm_loja', 'l.cd_tipo_checkout', 'l.cnpj_loja', 'l.email_loja',
+                'l.img_loja', 'l.cor_loja', 'l.frete_padrao'
             ])
             ->where('c.hash', $hash)
             ->first();
@@ -35,6 +32,12 @@ class CheckoutController extends Controller
         if (empty($query)) {
             return response()->json(['status' => 500]);
         }
+
+        $query->products = DB::table('order_product AS op')
+            ->join('produto as p', 'p.id_produto', '=', 'op.product_id')
+            ->where('op.order_id', $query->order_id)
+            ->select('p.titulo', 'p.preco', 'p.imagem1', 'op.quantity AS quantidade', 'op.variant AS variacao')
+            ->get();
 
         $query->pixelfb = DB::table('pixel_facebook')
                 ->where('id_loja', $query->id_loja)
@@ -50,9 +53,7 @@ class CheckoutController extends Controller
 
         $preferences = DB::table('checkout_preferencias')
             ->where('id_loja', $query->id_loja)
-            ->select([
-                'resumo_aberto', 'ultimo_dia', 'colher_senha', 'redirect_link'
-            ])
+            ->select('resumo_aberto', 'ultimo_dia', 'colher_senha', 'redirect_link')
             ->first();
 
         $query->resumo_aberto = optional($preferences)->resumo_aberto == 's';

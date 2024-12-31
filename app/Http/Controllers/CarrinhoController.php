@@ -113,7 +113,6 @@ class CarrinhoController extends Controller
                         ]);
                     }
 
-
                     $q = DB::select(DB::raw("SELECT id_produto FROM produto WHERE id_shopify = " . $product->spid));
                     $product->id = $q[0]->id_produto;
                 } else {
@@ -154,9 +153,6 @@ class CarrinhoController extends Controller
                     'id_loja' => $request->id_loja,
                     'hash' => $hashCarrinho,
                     'dt_instancia_carrinho' => date('Y-m-d H:i:s'),
-                    'quantidade' => 0,
-                    'variacao' => 0,
-                    'id_produto' => $products[0]->id
                 ]);
 
                 foreach ($products as $product) {
