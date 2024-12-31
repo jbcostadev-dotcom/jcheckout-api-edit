@@ -728,6 +728,8 @@ class DashboardController extends Controller
                 'colher_senha' => false,
                 'colher_facebook' => false,
                 'redirect_link' => null,
+                'language' => null,
+                'currency' => null,
             ]);
 
             return response()->json([
@@ -736,6 +738,8 @@ class DashboardController extends Controller
                 'colher_senha' => ($q[0]->colher_senha == 's' ? true : false),
                 'colher_facebook' => ($q[0]->colher_facebook == 's' ? true : false),
                 'redirect_link' => $q[0]->redirect_link,
+                'language' => $q[0]->language,
+                'currency' => $q[0]->currency,
             ]);
 
         } catch (\Exception $e) {
