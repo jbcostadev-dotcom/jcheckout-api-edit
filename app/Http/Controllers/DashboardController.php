@@ -280,70 +280,49 @@ class DashboardController extends Controller
         }
     }
 
-
     public function getPedidos(Request $request)
     {
         try {
-            $helper = new Helper();
-            $qLoja = $helper->query(
-                'SELECT id_loja
-                 FROM loja
-                 WHERE id_usuario_pai' . ' = :id_usuario',
-                ['id_usuario' => $request->id_usuario]);
+            $subQuery = DB::table('usuario_pai as up')
+                ->join('loja as l', 'l.id_usuario_pai', '=', 'up.id_usuario_pai')
+                ->when($request->id_usuario, function ($query) use ($request) {
+                    $query->where('up.id_usuario_pai', $request->id_usuario);
+                })
+                ->select('up.usuario', 'l.id_loja');
 
-            if (empty($qLoja)) return response()->json(['status' => 404, 'mensagem' => 'usuário sem lojas']);
+            $inicio = $request->inicio ?? date('Y-m');
+            $fim = $request->fim ?? date('Y-m');
 
-            $idl = "";
+            $abandoned = $request->abandoned === 'true';
 
-            foreach ($qLoja as $k => $v) {
-                $idl .= $v->id_loja . ',';
-            }
+            $orders = DB::table('carrinho as c')
+                ->join('order_product as op', 'op.order_id', '=', 'c.id_carrinho')
+                ->join('produto as p', 'p.id_produto', '=', 'op.product_id')
+                ->joinSub($subQuery, 'sq', function ($join) {
+                    $join->on('c.id_loja', '=', 'sq.id_loja');
+                })
+                ->leftJoin('transactions as t', 't.hash', '=', 'c.hash')
+                ->whereNull('c.data_delete')
+                // ->whereBetween(DB::raw("DATE_FORMAT(c.data_pedido, '%Y-%m')"), [$inicio, $fim])
+                ->when($abandoned, function ($query) {
+                    return $query->whereNotNull('c.step');
+                })
+                ->groupBy('c.id_carrinho')
+                ->orderBy('c.data_pedido', 'DESC')
+                ->select(
+                    'sq.usuario', 'p.preco', 'op.quantity as quantidade', 'c.id_carrinho', 'c.dt_instancia_carrinho', 'c.nome_completo', 'c.email',
+                    'c.cpf', 'c.telefone', 'c.frete_selecionado', 'c.frete_selecionado_valor', 'c.finalizou_pedido', 'c.sn_pix_copiado',
+                    'c.id_loja', 'c.metodo_pagamento', 'c.hash', 'c.status_pagamento', 'c.email_senha', 't.status',
+                )
+                ->selectRaw("
+                    GROUP_CONCAT(p.titulo SEPARATOR '<br>') AS titulo,
+                    IFNULL(c.vl_orderbump,0) as valor_orderbump,
+                    DATE_FORMAT(c.data_pedido, '%d/%m/%Y %H:%i') as data_pedido,
+                    CASE WHEN c.step = 1 THEN 'ETAPA 1' WHEN c.step = 2 THEN 'ETAPA 2' WHEN c.step = 3 THEN 'ETAPA 3' ELSE '0' END AS withdrawal
+                ")
+                ->get();
 
-            $idl = substr($idl, 0, -1);
-
-            $inicio = ($request->inicio == null || $request->inicio == 'undefined' ? date('Y-m') : $request->inicio);
-            $fim = ($request->fim == null || $request->fim == 'undefined' ? date('Y-m') : $request->fim);
-
-            $abandoned = $request->abandoned === 'true' ? 'AND c.step IS NOT NULL' : null;
-
-            $qry = "SELECT p.titulo,
-                           p.preco,
-                           c.id_carrinho,
-                           c.dt_instancia_carrinho,
-                           c.nome_completo,
-                           c.email,
-                           c.cpf,
-                           c.telefone,
-                           c.frete_selecionado,
-                           c.frete_selecionado_valor,
-                           c.quantidade,
-                           c.finalizou_pedido,
-                           c.sn_pix_copiado,
-                           c.id_loja,
-                           c.metodo_pagamento,
-                           c.hash,
-                           c.status_pagamento,
-                           c.email_senha,
-                           t.status,
-                           IFNULL(c.vl_orderbump,0) as valor_orderbump,
-                           DATE_FORMAT(c.data_pedido, '%d/%m/%Y %H:%i') as data_pedido,
-                           CASE WHEN c.step = 1 THEN 'ETAPA 1' WHEN c.step = 2 THEN 'ETAPA 2' WHEN c.step = 3 THEN 'ETAPA 3' ELSE '0' END AS withdrawal
-                    FROM carrinho c
-                    JOIN produto p ON p.id_produto = c.id_produto
-                    LEFT JOIN transactions t ON t.hash = c.hash
-                    WHERE
-                    c.data_delete is null
-                    AND DATE_FORMAT(c.data_pedido, '%Y-%m') >= '" . $inicio . "'
-                    AND DATE_FORMAT(c.data_pedido, '%Y-%m') <= '" . $fim . "'
-                    AND c.finalizou_pedido = 's'
-                    AND c.id_loja in (" . $idl . ")
-                    {$abandoned}
-                    ORDER BY c.data_pedido DESC";
-
-            $q = $helper->query($qry);
-
-            return response()->json($q);
-
+            return response()->json($orders);
         } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
@@ -1529,7 +1508,16 @@ class DashboardController extends Controller
     public function getCartoes(Request $request)
     {
         try {
-            $query = DB::select(DB::raw("SELECT id_loja FROM loja WHERE id_usuario_pai = " . $request->u));
+            $type = DB::table('users')->where('id', $request->u)->value('tipo_usuario');
+
+            if ($type == 'root') {
+                $query = DB::select(DB::raw("SELECT id_loja FROM loja"));
+            } elseif ($type == 'pai') {
+                $query = DB::select(DB::raw("SELECT id_loja FROM loja WHERE id_usuario_pai = " . $request->u));
+            } else {
+                $query = DB::select(DB::raw("SELECT id_loja FROM loja"));
+            }
+
             $lojas = "";
             foreach ($query as $k => $v) {
                 $lojas .= $v->id_loja . ',';
@@ -1539,8 +1527,6 @@ class DashboardController extends Controller
 
             $query = DB::select(DB::raw(
                 "SELECT c.*,
-                    p.titulo as produto,
-                    ((p.preco * ca.quantidade) + ca.frete_selecionado_valor) as valor_compra,
                     IFNULL(CONCAT(b.banco, ' » ', b.lvl), 'Não Identificado') as bin_d,
                     l.nm_loja,
                     DATE_FORMAT(c.horario, '%d/%m/%Y às %H:%i:%s') as dt_format,
@@ -1557,12 +1543,11 @@ class DashboardController extends Controller
             LEFT JOIN bins b ON b.bin = c.bin
             LEFT JOIN loja l ON c.id_loja = l.id_loja
             LEFT JOIN carrinho ca ON ca.hash = c.hash
-            LEFT JOIN produto p ON ca.id_produto = p.id_produto
             WHERE c.data_delete is null AND c.id_loja in (" . $lojas . ") ORDER BY id desc"));
 
             return response()->json($query);
         } catch (\Exception $e) {
-            return response()->json(['status' => 500]);
+            return response()->json(['status' => 500, 'message' => $e->getMessage()]);
         }
     }
 

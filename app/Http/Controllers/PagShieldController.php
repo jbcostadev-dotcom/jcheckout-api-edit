@@ -29,7 +29,7 @@ class PagShieldController extends Controller
         $products = DB::table('order_products AS op')
             ->leftJoin('produto AS p', 'p.id_produto', '=', 'op.product_id')
             ->where('op.order_id', $cart->id_carrinho)
-            ->select('p.titulo', 'p.preco', 'o.quantity')
+            ->select('p.titulo', 'p.preco', 'o.quantity', 'o.unit_price')
             ->get();
 
         if ($products->isEmpty()) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
@@ -40,7 +40,7 @@ class PagShieldController extends Controller
             $items[] = [
                 'tangible' => true,
                 'title' => $product->titulo,
-                'unitPrice' => intval($product->preco * 100),
+                'unitPrice' => intval(($product->unit_price ?? $product->preco) * 100),
                 'quantity' => intval($product->quantity),
             ];
         }

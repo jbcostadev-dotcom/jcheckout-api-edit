@@ -137,83 +137,47 @@ class CheckoutController extends Controller
         try {
             $helper = new Helper();
 
-            if (!$helper->verificaParametro($request->hash)) return response()->json(['status' => 500]);
-
-            $queryLoja = $helper->query(
-                "
-                    SELECT id_loja
-                    FROM carrinho
-                    WHERE hash = :hash
-                ",
-                ['hash' => $request->hash]
-            );
-
-            $queryCliente = $helper->query(
-                "
-                    SELECT nome_completo,
-                           cpf,
-                           telefone,
-                           cep,
-                           rua,
-                           numero,
-                           bairro,
-                           complemento,
-                           frete_selecionado,
-                           frete_selecionado_valor,
-                           email,
-                           id_produto,
-                           orderbump,
-                           IFNULL(vl_orderbump,0) as vl_orderbump
-                    FROM carrinho
-                    WHERE hash = :hash
-                ",
-                ['hash' => $request->hash]
-            );
-
-            if (empty($queryLoja)) return response()->json(['status' => 500]);
-
-            $pagamentoPix = $helper->query(
-                "SELECT tipo_chave,
-                        chave,
-                        logo_banco
-                 FROM pagamento_pix
-                 WHERE id_loja = :id_loja
-                 ",
-                ['id_loja' => $queryLoja[0]->id_loja]
-            );
-
-            // if(empty($pagamentoPix)) return response()->json( [ 'status' => 404 ] );
-            $queryOrderBump = $helper->query("SELECT produto_orderbump, valor_orderbump FROM produto WHERE id_produto = " . $queryCliente[0]->id_produto);
-            $flagOrderBump = false;
-
-            if (!empty($queryOrderBump) && !is_null($queryOrderBump[0]->produto_orderbump)) {
-                $flagOrderBump = true;
-                $qProdutoOrderBump = $helper->query("
-                    SELECT titulo, imagem1
-                    FROM produto
-                    WHERE id_produto = :id
-                ", ['id' => $queryOrderBump[0]->produto_orderbump]);
-
+            if (!$helper->verificaParametro($request->hash)) {
+                return response()->json(['status' => 500]);
             }
 
+            $cart = DB::table('carrinho')
+                ->where('hash', $request->hash)
+                ->selectRaw("
+                    id_carrinho, nome_completo, cpf, telefone, cep, rua, numero, id_loja, bairro,
+                    complemento, frete_selecionado, frete_selecionado_valor, email, orderbump,
+                    IFNULL(vl_orderbump, 0) as vl_orderbump
+                ")
+                ->first();
+
+            if (!$cart) {
+                return response()->json(['status' => 500]);
+            }
+
+            $pagamentoPix = DB::table('pagamento_pix')
+                ->where('id_loja', $cart->id_loja)
+                ->select('tipo_chave', 'chave', 'logo_banco')
+                ->get();
+
+            $bumpProducts = DB::table('produto AS mp') // mp = main product, bp = bump product
+                ->join('produto AS bp', 'bp.id_produto', '=', 'mp.produto_orderbump')
+                ->whereIn(
+                    'mp.id_produto',
+                    DB::table('order_product')
+                        ->where('order_id', $cart->id_carrinho)
+                        ->pluck('product_id')
+                )
+                ->select('bp.id_produto AS id', 'bp.titulo AS title', 'bp.imagem1 AS image', 'bp.preco AS actual_price', 'mp.valor_orderbump AS offer_price')
+                ->get();
 
             return response()->json([
                 'status' => 200,
-                'listaCliente' => $queryCliente[0],
-                'listaTiposPagamento' => [
-                    'pix' => $pagamentoPix
-                ],
-                'listaOrder' => [
-                    'order' => $flagOrderBump,
-                    'order_produto' => (!empty($qProdutoOrderBump[0]->titulo) ? $qProdutoOrderBump[0]->titulo : null),
-                    'order_img' => (!empty($qProdutoOrderBump[0]->imagem1) ? $qProdutoOrderBump[0]->imagem1 : null),
-                    'order_vl' => (!empty($queryOrderBump[0]->valor_orderbump) ? $queryOrderBump[0]->valor_orderbump : null)
-                ],
+                'listaCliente' => $cart,
+                'listaTiposPagamento' => ['pix' => $pagamentoPix],
+                'bumpProducts' => $bumpProducts,
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 500
-            ]);
+        } catch (\Exception $exception) {
+            return response()->json(['status' => 500]);
         }
     }
 
@@ -285,7 +249,7 @@ class CheckoutController extends Controller
             }
 
             $shop = DB::table('carrinho')
-                ->select('id_loja', 'metodo_pagamento', 'id_produto')
+                ->select('id_loja', 'metodo_pagamento')
                 ->where('hash', $request->hash)
                 ->first();
 
@@ -294,7 +258,7 @@ class CheckoutController extends Controller
             }
 
             $getValorCarrinho = DB::table('carrinho')
-                ->select('quantidade', 'frete_selecionado_valor', 'vl_orderbump', 'orderbump')
+                ->select('frete_selecionado_valor', 'vl_orderbump', 'orderbump')
                 ->where('hash', $request->hash)
                 ->first();
 
@@ -531,51 +495,44 @@ class CheckoutController extends Controller
 
     public function ativaOrderBump(Request $request)
     {
-        try {
-            $helper = new Helper();
+        $price = DB::table('order_product AS op')
+            ->join('produto AS p', 'p.id_produto', '=', 'op.product_id')
+            ->where('op.order_id', $request->orderId)
+            ->where('p.produto_orderbump', $request->bumpProductId)
+            ->value('p.valor_orderbump');
 
-
-            $q = $helper->query("
-            SELECT  p.produto_orderbump, p.valor_orderbump
-            FROM carrinho c
-            JOIN produto p ON c.id_produto = p.id_produto
-            WHERE c.hash = '" . $request->hash . "'");
-
-            $helper->query("
-                UPDATE carrinho
-                SET orderbump = 's',
-                    vl_orderbump = " . $q[0]->valor_orderbump . "
-                WHERE hash = '" . $request->hash . "'");
-
-            $q2 = $helper->query("
-                SELECT titulo, imagem1
-                FROM produto
-                WHERE id_produto = " . $q[0]->produto_orderbump);
-
-
-            return response()->json([
-                'status' => 200,
-                'titulo' => $q2[0]->titulo,
-                'img' => $q2[0]->imagem1,
-                'preco' => $q[0]->valor_orderbump
+        DB::table('order_product')
+            ->insert([
+                'order_id' => $request->orderId,
+                'product_id' => $request->bumpProductId,
+                'quantity' => 1,
+                'unit_price' => $price,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
-        } catch (\Exception $e) {
-            return response()->json(['status' => 500]);
-        }
+
+        $bumpProduct = DB::table('produto')
+            ->where('id_produto', $request->bumpProductId)
+            ->select('titulo', 'imagem1', 'id_produto')
+            ->first();
+
+        return response()->json([
+            'status' => 200,
+            'titulo' => $bumpProduct->titulo,
+            'img' => $bumpProduct->imagem1,
+            'preco' => $price,
+            'id' => $bumpProduct->id_produto,
+        ]);
     }
 
     public function desativarOrder(Request $request)
     {
-        try {
-            $helper = new Helper();
-            $helper->query("
-                UPDATE carrinho
-                SET orderbump = 'n'
-                WHERE hash = " . $request->hash);
-            return response()->json(['status' => 200]);
-        } catch (\Exception $e) {
-            return response()->json(['status' => 500]);
-        }
+        DB::table('order_product')
+            ->where('order_id', $request->orderId)
+            ->where('product_id', $request->bumpProductId)
+            ->delete();
+
+        return response()->json(['status' => 200]);
     }
 
     public function getQrCodeBc($cookie, $smid, $valor)

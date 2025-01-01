@@ -34,7 +34,7 @@ class UtmifyController extends Controller
         $products = DB::table('order_products AS op')
             ->leftJoin('produto AS p', 'p.id_produto', '=', 'op.product_id')
             ->where('op.order_id', $cart->id_carrinho)
-            ->select('p.id_produto', 'p.titulo', 'p.preco', 'o.quantity')
+            ->select('p.id_produto', 'p.titulo', 'p.preco', 'o.quantity', 'o.unit_price')
             ->get();
 
         if ($products->isEmpty()) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];
@@ -48,7 +48,7 @@ class UtmifyController extends Controller
                 'planId' => null,
                 'planName' => null,
                 'quantity' => $product->quantity,
-                'priceInCents' => $product->preco * 100
+                'priceInCents' => ($product->unit_price ?? $product->preco) * 100
             ];
         }
 
