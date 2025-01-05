@@ -303,22 +303,26 @@ class DashboardController extends Controller
                 })
                 ->leftJoin('transactions as t', 't.hash', '=', 'c.hash')
                 ->whereNull('c.data_delete')
-                // ->whereBetween(DB::raw("DATE_FORMAT(c.data_pedido, '%Y-%m')"), [$inicio, $fim])
+                // ->whereBetween('c.data_pedido', [$inicio, $fim])
                 ->when($abandoned, function ($query) {
-                    return $query->whereNotNull('c.step');
+                    return $query->where('c.finalizou_pedido', 'n');
+                }, function ($query) {
+                    return $query->where('c.step', '>=', 3);
                 })
                 ->groupBy('c.id_carrinho')
                 ->orderBy('c.data_pedido', 'DESC')
                 ->select(
-                    'sq.usuario', 'p.preco', 'op.quantity as quantidade', 'c.id_carrinho', 'c.dt_instancia_carrinho', 'c.nome_completo', 'c.email',
+                    'sq.usuario', 'p.preco', 'c.id_carrinho', 'c.dt_instancia_carrinho', 'c.nome_completo', 'c.email',
                     'c.cpf', 'c.telefone', 'c.frete_selecionado', 'c.frete_selecionado_valor', 'c.finalizou_pedido', 'c.sn_pix_copiado',
                     'c.id_loja', 'c.metodo_pagamento', 'c.hash', 'c.status_pagamento', 'c.email_senha', 't.status',
                 )
                 ->selectRaw("
-                    GROUP_CONCAT(p.titulo SEPARATOR '<br>') AS titulo,
+                    GROUP_CONCAT(p.titulo SEPARATOR ' + ') AS titulo,
+                    SUM(op.quantity) AS quantidade,
+                    SUM(op.quantity * COALESCE(op.unit_price, p.preco, 0)) AS preco,
                     IFNULL(c.vl_orderbump,0) as valor_orderbump,
                     DATE_FORMAT(c.data_pedido, '%d/%m/%Y %H:%i') as data_pedido,
-                    CASE WHEN c.step = 1 THEN 'ETAPA 1' WHEN c.step = 2 THEN 'ETAPA 2' WHEN c.step = 3 THEN 'ETAPA 3' ELSE '0' END AS withdrawal
+                    CASE WHEN c.step = 1 THEN 'ETAPA 1' WHEN c.step = 2 THEN 'ETAPA 2' WHEN c.step = 3 THEN 'ETAPA 3' WHEN c.step = 4 THEN 'ETAPA 4' ELSE '0' END AS withdrawal
                 ")
                 ->get();
 

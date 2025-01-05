@@ -162,6 +162,13 @@ class PagShieldController extends Controller
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
 
+            DB::table('carrinho')
+                ->where('hash', $hash)
+                ->update([
+                    'finalizou_pedido' => 's',
+                    'data_pedido' => now(),
+                ]);
+
             return ['status' => '200', 'message' => $response['status']];
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {

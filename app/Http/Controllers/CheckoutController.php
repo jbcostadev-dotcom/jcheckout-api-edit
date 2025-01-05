@@ -281,7 +281,10 @@ class CheckoutController extends Controller
 
                 DB::table('carrinho')
                     ->where('hash', $request->hash)
-                    ->update(['step' => null]);
+                    ->update([
+                        'finalizou_pedido' => 's',
+                        'data_pedido' => now(),
+                    ]);
 
                 if ($response['paymentMethod'] === 'credit_card') {
                     (new UtmifyController())->createOrder(
@@ -303,12 +306,24 @@ class CheckoutController extends Controller
                         $response['pix']['qrcode'], $response['status'],
                         $response['id'], 'pix'
                     );
+                } else {
+                    return response()->json([
+                        'status' => 500,
+                        'message' => 'Payment method must be card or pix'
+                    ]);
                 }
             } else {
-                return response()->json(['status' => 500, 'message' => 'Payment method must be card or pix']);
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Payment method must be card or pix'
+                ]);
             }
         } catch (\Exception $exception) {
-            return response()->json(['status' => 500, 'in' => 'CC', 'message' => $exception->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'in' => 'CC',
+                'message' => $exception->getMessage()
+            ]);
         }
     }
 
@@ -318,8 +333,6 @@ class CheckoutController extends Controller
         $whatsapp = new WhatsappController;
         $email = new EmailController;
         $qrcode = new Qrcode();
-
-        $helper->query('UPDATE carrinho SET finalizou_pedido = "s", data_pedido = :dt WHERE hash = :hash', ['hash' => $request->hash, 'dt' => date('Y-m-d H:i:s')]);
 
         $verificaZap = $helper->query("SELECT instance_id, instance_token FROM whatsapp_loja WHERE id_loja = " . $shop->id_loja);
         $verificaEnviado = $helper->query("SELECT whatsapp_pedido, email_pedido FROM carrinho WHERE hash = '" . $request->hash . "'");
