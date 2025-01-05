@@ -251,7 +251,7 @@ class DashboardController extends Controller
                             uo.useragent,
                             uo.ip,
                             c.nome_completo,
-                            c.quantidade,
+                            op.quantity as quantidade,
                             l.img_loja,
                             l.nm_loja,
                             p.titulo,
@@ -262,8 +262,9 @@ class DashboardController extends Controller
                             uo.dispositivo
                      FROM usuarios_online uo
                      JOIN carrinho c ON c.hash = uo.hash
+                     JOIN order_product op ON op.order_id = c.id_carrinho
+                     JOIN produto p ON op.product_id = p.id_produto
                      JOIN loja l ON c.id_loja = l.id_loja
-                     JOIN produto p ON c.id_produto = p.id_produto
                      WHERE 1=1
                      AND DATE_FORMAT(uo.ultima_interacao, '%Y-%m-%d %H:%i:%s') >= :dt
                      AND uo.flag = 'checkout'
@@ -274,9 +275,8 @@ class DashboardController extends Controller
                 );
             }
             return response()->json($q);
-        } catch (\Exception $e) {
-            return $e;
-            return [];
+        } catch (\Exception $exception) {
+            return $exception->getMessage();
         }
     }
 
