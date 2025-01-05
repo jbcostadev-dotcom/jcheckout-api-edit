@@ -349,15 +349,15 @@ class CheckoutController extends Controller
         $verificaShopify = $helper->query("SELECT * FROM shopify_loja WHERE marcar_pedido = 's' AND id_loja = " . $shop->id_loja);
         $verificaShopify2 = $helper->query("SELECT pedido_shopify FROM carrinho WHERE hash ='" . $request->hash . "'");
 
-        if (!empty($verificaShopify) && $verificaShopify2[0]->pedido_shopify == 'n') {
-            $objCarrinho = $helper->query("SELECT * FROM carrinho c JOIN produto p ON c.id_produto = p.id_produto WHERE hash = '" . $request->hash . "'");
-            $objCarrinho = $objCarrinho[0];
-            try {
-                $this->finalizaPedido($shop->id_loja, $objCarrinho);
-            } catch (\Exception $e) {
-                //....
-            }
-        }
+//        if (!empty($verificaShopify) && $verificaShopify2[0]->pedido_shopify == 'n') {
+//            $objCarrinho = $helper->query("SELECT * FROM carrinho c JOIN produto p ON c.id_produto = p.id_produto WHERE hash = '" . $request->hash . "'");
+//            $objCarrinho = $objCarrinho[0];
+//            try {
+//                $this->finalizaPedido($shop->id_loja, $objCarrinho);
+//            } catch (\Exception $e) {
+//                //....
+//            }
+//        }
 
         if (!empty($verificaZap) && $verificaEnviado[0]->whatsapp_pedido == 'n') {
             $notificacao = $whatsapp->enviaMensagem($request->hash, 'pedido', $secureUrl);
