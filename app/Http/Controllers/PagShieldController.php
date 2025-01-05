@@ -26,10 +26,10 @@ class PagShieldController extends Controller
 
         if (!$pagShieldData) return ['status' => '404', 'message' => 'Nenhuma chave secreta encontrada para o PagShield!'];
 
-        $products = DB::table('order_products AS op')
+        $products = DB::table('order_product AS op')
             ->leftJoin('produto AS p', 'p.id_produto', '=', 'op.product_id')
             ->where('op.order_id', $cart->id_carrinho)
-            ->select('p.titulo', 'p.preco', 'o.quantity', 'o.unit_price')
+            ->select('p.titulo', 'p.preco', 'op.quantity', 'op.unit_price')
             ->get();
 
         if ($products->isEmpty()) return ['status' => '404', 'message' => 'Nenhum produto encontrado!'];

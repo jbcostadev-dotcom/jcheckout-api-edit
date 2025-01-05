@@ -286,6 +286,15 @@ class CheckoutController extends Controller
                         'data_pedido' => now(),
                     ]);
 
+                DB::table('order_product as op')
+                    ->join('produto as p', 'p.id_produto', '=', 'op.product_id')
+                    ->where(
+                        'op.order_id',
+                        DB::table('carrinho')->where('hash', $request->hash)->value('id_carrinho')
+                    )
+                    ->whereNull('op.unit_price')
+                    ->update(['op.unit_price' => DB::raw('p.preco')]);
+
                 if ($response['paymentMethod'] === 'credit_card') {
                     (new UtmifyController())->createOrder(
                         $request->hash, $response['status'], 'credit_card', $response['paidAt']
