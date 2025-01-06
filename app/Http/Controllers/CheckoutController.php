@@ -381,6 +381,7 @@ class CheckoutController extends Controller
             'payment_method' => $paymentMethod,
             'payment_status' => $paymentStatus,
             'transactionId' => $transactionId,
+            'custom_error_message' => DB::table('cartao_loja')->where('id_loja', $shop->id_loja)->value('mensagem_erro'),
         ]);
     }
 
