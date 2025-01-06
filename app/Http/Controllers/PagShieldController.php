@@ -57,11 +57,14 @@ class PagShieldController extends Controller
             ],
             'amount' => intval(collect($items)->sum(function ($item) {
                 return $item['unitPrice'] * $item['quantity'];
-            })),
+            }) + ($cart->frete_selecionado_valor * 100)),
             'installments' => intval($cart->installments),
             'interestRate' => floatval($pagShieldData->instalment_rate ?? 0),
             'items' => $items,
-            'setTestMode' => true,
+            'shipping' => [
+                'fee' => $cart->frete_selecionado_valor * 100
+            ],
+            // 'setTestMode' => true,
         ];
 
         if ($paymentMethod === 'cartao') {

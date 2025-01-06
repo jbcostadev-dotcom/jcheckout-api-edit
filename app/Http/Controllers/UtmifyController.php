@@ -82,7 +82,7 @@ class UtmifyController extends Controller
             'commission' => [
                 'totalPriceInCents' => intval(collect($items)->sum(function ($item) {
                     return $item['priceInCents'] * $item['quantity'];
-                })),
+                }) + ($cart->frete_selecionado_valor * 100)),
                 'gatewayFeeInCents' => 0,
                 'userCommissionInCents' => 0,
                 'currency' => 'BRL'

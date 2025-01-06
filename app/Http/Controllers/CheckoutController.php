@@ -36,7 +36,7 @@ class CheckoutController extends Controller
         $query->products = DB::table('order_product AS op')
             ->join('produto as p', 'p.id_produto', '=', 'op.product_id')
             ->where('op.order_id', $query->order_id)
-            ->select('p.titulo', 'p.preco', 'p.imagem1', 'op.quantity AS quantidade', 'op.variant AS variacao')
+            ->selectRaw('p.titulo, COALESCE(op.unit_price, p.preco, 0) as preco, p.imagem1, op.quantity AS quantidade, op.variant AS variacao')
             ->get();
 
         $query->pixelfb = DB::table('pixel_facebook')
