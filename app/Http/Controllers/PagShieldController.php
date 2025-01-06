@@ -105,8 +105,6 @@ class PagShieldController extends Controller
                 'body' => json_encode($body),
             ]);
 
-            dd(json_decode($response->getBody(), true));
-
             return json_decode($response->getBody(), true);
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
