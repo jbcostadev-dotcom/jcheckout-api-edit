@@ -415,10 +415,23 @@ class DashboardController extends Controller
                 $qFacebooksHoje = [];
             }
 
+            $shop_ids = DB::table('loja')->where('id_usuario_pai', $idUsuario)->pluck('id_loja');
+
+            $query = DB::table('carrinho as c')
+                ->join('order_product as op', 'op.order_id', '=', 'c.id_carrinho')
+                ->whereIn('c.id_loja', $shop_ids)
+                ->whereNull('c.data_delete')
+                ->whereNotNull('c.data_pedido')
+                ->selectRaw('SUM(op.quantity * COALESCE(op.unit_price, 0)) AS sales_amount');
+
             $listaRetorno = [
                 'pedidos' => [
                     'total' => $qPedidos[0]->total,
                     'hoje' => $qPedidos[0]->hoje
+                ],
+                'sales_amount' => [
+                    'total' => (clone $query)->first()->sales_amount ?? 0,
+                    'today' => (clone $query)->whereDate('c.dt_instancia_carrinho', date('Y-m-d'))->first()->sales_amount ?? 0
                 ],
                 'visitas' => [
                     'total' => $qPedidos[0]->visitas_total,
@@ -433,7 +446,7 @@ class DashboardController extends Controller
 
             return response()->json($listaRetorno);
         } catch (\Exception $e) {
-            return $e;
+            return $e->getMessage();
 
         }
     }
