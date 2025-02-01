@@ -268,6 +268,7 @@ class CheckoutController extends Controller
                 );
 
                 if ($response['status'] == 404) {
+                    $response['custom_error_message'] = $this->getErrorMessage($shop->id_loja);
                     return response()->json($response);
                 }
 
@@ -381,7 +382,7 @@ class CheckoutController extends Controller
             'payment_method' => $paymentMethod,
             'payment_status' => $paymentStatus,
             'transactionId' => $transactionId,
-            'custom_error_message' => DB::table('cartao_loja')->where('id_loja', $shop->id_loja)->value('mensagem_erro'),
+            'custom_error_message' => $this->getErrorMessage($shop->id_loja),
         ]);
     }
 
@@ -1012,6 +1013,15 @@ class CheckoutController extends Controller
         } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
+    }
+
+    private function getErrorMessage($shop_id)
+    {
+        return DB::table('cartao_loja')
+            ->where('id_loja', $shop_id)
+            ->value('mensagem_erro')
+            ??
+            'O seu pagamento foi recusado, tente outro cartão de crédito ou altere a forma de pagamento.';
     }
 }
 
