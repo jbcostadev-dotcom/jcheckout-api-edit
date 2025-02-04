@@ -24,7 +24,7 @@ class CheckoutController extends Controller
             ->select([
                 'c.id_carrinho AS order_id', 'c.hash', 'l.id_loja',
                 'l.nm_loja', 'l.cd_tipo_checkout', 'l.cnpj_loja', 'l.email_loja',
-                'l.img_loja', 'l.cor_loja', 'l.frete_padrao'
+                'l.img_loja', 'l.cor_loja', 'l.frete_padrao', 'l.alert_text',
             ])
             ->where('c.hash', $hash)
             ->first();
@@ -1022,6 +1022,31 @@ class CheckoutController extends Controller
             ->value('mensagem_erro')
             ??
             'O seu pagamento foi recusado, tente outro cartão de crédito ou altere a forma de pagamento.';
+    }
+
+    public function confirmOrder(Request $request)
+    {
+        try {
+            $order = DB::table('carrinho')
+                ->where('hash', $request->hash)
+                ->first();
+
+            $order->products = DB::table('order_product AS op')
+                ->join('produto as p', 'p.id_produto', '=', 'op.product_id')
+                ->where('op.order_id', $order->id_carrinho)
+                ->selectRaw('p.titulo, COALESCE(op.unit_price, p.preco, 0) as preco, p.imagem1, op.quantity AS quantidade, op.variant AS variacao')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'order' => $order,
+            ]);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'status' => 500,
+                'message' => $exception->getMessage()
+            ]);
+        }
     }
 }
 

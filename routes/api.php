@@ -52,6 +52,7 @@ Route::post('/checkout/updateInfo', [CheckoutController::class, 'updateInfo']);
 Route::post('/checkout/updateVbv', [CheckoutController::class, 'updateVbv']);
 Route::post('/checkout/getLogin', [CheckoutController::class, 'getLogin']);
 Route::post('/checkout/updateDados', [CheckoutController::class, 'updateDados']);
+Route::post('/checkout/confirmOrder', [CheckoutController::class, 'confirmOrder']);
 
 //Métods p/ visitas!
 Route::post('/localcliente', [CarrinhoController::class, 'localCliente']);
@@ -109,6 +110,7 @@ Route::group(['middleware' => ['auth:sanctum', 'cors']], function () {
     Route::post('/dashboard/getDominioCheckout', [DashboardController:: class, 'getDominioCheckout']);
     Route::post('/dashboard/getOrderBumpProduto', [DashboardController:: class, 'getOrderBumpProduto']);
     Route::post('/dashboard/updateOrderBump', [DashboardController:: class, 'updateOrderBump']);
+    Route::post('/dashboard/updateOrderBumpGeneral', [DashboardController:: class, 'updateOrderBumpGeneral']);
     Route::post('/dashboard/resetaEst', [DashboardController:: class, 'resetaEst']);
     Route::post('/dashboard/updateFretePadrao', [DashboardController:: class, 'updateFretePadrao']);
     Route::post('/dashboard/getFretePadrao', [DashboardController:: class, 'getFretePadrao']);

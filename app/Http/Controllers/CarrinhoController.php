@@ -189,7 +189,6 @@ class CarrinhoController extends Controller
 
         $snLogin = DB::select(DB::raw("SELECT * FROM checkout_preferencias WHERE id_loja = " . $request->id_loja));
 
-
         $listaRetorno = [
             'nm_loja' => $qry[0]->nm_loja,
             'id_checkout' => $qry[0]->id_checkout,

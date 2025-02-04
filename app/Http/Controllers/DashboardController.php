@@ -823,14 +823,28 @@ class DashboardController extends Controller
     public function updateOrderBump(Request $request)
     {
         try {
-
             $p_order = ($request->o_p == '-1' ? null : $request->o_p);
 
-            $query = $this->helper()->query("
+            $this->helper()->query("
                 UPDATE produto
                 SET produto_orderbump = " . (is_null($p_order) ? 'NULL' : $p_order) . ",
                     valor_orderbump = " . $request->o_vl . "
                 WHERE id_produto = " . $request->p);
+
+            return response()->json(['status' => 200]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 500]);
+        }
+    }
+
+    public function updateOrderBumpGeneral(Request $request)
+    {
+        try {
+            DB::table('produto')
+                ->where('id_produto', $request->bumpable_product_id)
+                ->update([
+                    'order_bump_general_price' => $request->bumpable_product_price
+                ]);
 
             return response()->json(['status' => 200]);
 
@@ -1290,8 +1304,6 @@ class DashboardController extends Controller
     {
         try {
             try {
-                $helper = new Helper();
-
                 $request->dominio = str_replace('https://', '', $request->dominio);
                 $request->dominio = str_replace('/', '', $request->dominio);
                 $config = [
@@ -1307,7 +1319,7 @@ class DashboardController extends Controller
                 $shopify = new ShopifySDK($config);
 
                 try {
-                    $loja = $shopify->Shop->get();
+                    $shopify->Shop->get();
 
                     DB::table('shopify_loja')->insert([
                         'chave_api' => $request->chave_api,
@@ -1316,6 +1328,37 @@ class DashboardController extends Controller
                         'id_loja' => $request->l,
                         'dominio_loja' => $request->dominio_loja
                     ]);
+
+                    $products = [];
+                    $shopifyProducts = $shopify->Product->get();
+
+                    $shop = DB::table('loja')->where('id_loja', $request->l)->first();
+
+                    foreach ($shopifyProducts as $product) {
+                        $images = array_column(array_values($product['images']), 'src', 'id');
+
+                        foreach ($product['variants'] as $variant) {
+                            if (
+                                DB::table('produto')
+                                    ->where('id_shopify', $product['id'])
+                                    ->where('id_variante_shopify', $variant['id'])
+                                    ->doesntExist()
+                            ) {
+                                $products[] = [
+                                    'titulo' => $product['title'],
+                                    'descricao' => '<br>',
+                                    'preco' => $variant['price'],
+                                    'imagem1' => $images[$variant['image_id']] ?? reset($images),
+                                    'id_usuario_pai' => $shop->id_usuario_pai,
+                                    'id_loja' => $shop->id_loja,
+                                    'id_shopify' => $product['id'],
+                                    'id_variante_shopify' => $variant['id']
+                                ];
+                            }
+                        }
+                    }
+
+                    DB::table('produto')->insert($products);
 
                     return response()->json(['status' => 200]);
                 } catch (\Exception $e) {

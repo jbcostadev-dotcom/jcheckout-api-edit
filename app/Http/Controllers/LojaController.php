@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\Helper;
 
 class LojaController extends Controller
 {
@@ -91,11 +90,11 @@ class LojaController extends Controller
                     'id_usuario' => $request->id_usuario,
                 ]
             );
-            if(empty($query)){
+            if (empty($query)) {
                 return response()->json(['status' => 401]);
             }
 
-            foreach($query as $k => $v){
+            foreach ($query as $k => $v) {
                 $q = $helper->query("
                 SELECT qry.cnt as visitas_checkout,
                        qry2.cnt pedidos
@@ -130,53 +129,44 @@ class LojaController extends Controller
 
     public function updateLoja(Request $request)
     {
-        $urlimagem = null;
-        if(empty($request->id_loja) || is_null($request->id_loja)){
+        if (empty($request->id_loja) || is_null($request->id_loja)) {
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Não foi possível realizar as alterações na loja.'
             ]);
         }
 
-        try{
+        try {
             $urlimagem = null;
 
-            if(!is_null($request->imagem) && $request->imagem != 'undefined'){
+            if (!is_null($request->imagem) && $request->imagem != 'undefined') {
                 $image = $request->file('imagem');
                 $filename = uniqid() . '.' . $image->getClientOriginalExtension();
                 Storage::disk('public')->put($filename, file_get_contents($image));
-                $urlimagem = request()->getHttpHost() . '/logoloja/'. $filename;
+                $urlimagem = request()->getHttpHost() . '/logoloja/' . $filename;
             }
 
-            if($urlimagem == null){
+            if ($urlimagem == null) {
                 $qryVerificaImagem = DB::select(DB::raw(
                     'SELECT img_loja FROM loja WHERE id_loja = :id_loja'
-                ),['id_loja' => $request->id_loja]);
+                ), ['id_loja' => $request->id_loja]);
 
-                if($qryVerificaImagem[0]->img_loja != null && $qryVerificaImagem[0]->img_loja != ''){
+                if ($qryVerificaImagem[0]->img_loja != null && $qryVerificaImagem[0]->img_loja != '') {
                     $urlimagem = $qryVerificaImagem[0]->img_loja;
                 }
             }
 
-            $qryUpdate = DB::select(DB::raw(
-                'UPDATE loja
-                 SET
-                 nm_loja = :nm_loja,
-                 cd_tipo_checkout = :cd_tipo_checkout,
-                 img_loja = :img_loja,
-                 cor_loja = :cor_loja,
-                 email_loja = :email_loja,
-                 cnpj_loja = :cnpj_loja
-                 WHERE id_loja = :id_loja'
-            ),[
-                'nm_loja' => $request->nm_loja,
-                'cd_tipo_checkout' => $request->cd_tipo_checkout,
-                'img_loja' => $urlimagem,
-                'cor_loja' => $request->cor_loja,
-                'email_loja' => $request->email_loja,
-                'cnpj_loja' => $request->cnpj_loja,
-                'id_loja' => $request->id_loja
-            ]);
+            DB::table('loja')
+                ->where('id_loja', $request->id_loja)
+                ->update([
+                    'nm_loja' => $request->nm_loja,
+                    'cd_tipo_checkout' => $request->cd_tipo_checkout,
+                    'img_loja' => $urlimagem,
+                    'cor_loja' => $request->cor_loja,
+                    'email_loja' => $request->email_loja,
+                    'cnpj_loja' => $request->cnpj_loja,
+                    'alert_text' => $request->alert_text
+                ]);
 
             return response()->json([
                 'status' => 200,
@@ -185,18 +175,18 @@ class LojaController extends Controller
                 'img' => $urlimagem
             ]);
 
-        }catch(\Exception $e){
-            //return $e;
-return response()->json([
+        } catch (\Exception $e) {
+            return response()->json([
                 'status' => 401,
                 'mensagem' => 'Não foi possível salvar as alterações da loja.'
             ]);
         }
     }
 
-    public function importarCsv(Request $request){
-        try{
-            if(!isset($request->id_usuario) || !isset($request->tipo_usuario) || !isset($request->id_loja)){
+    public function importarCsv(Request $request)
+    {
+        try {
+            if (!isset($request->id_usuario) || !isset($request->tipo_usuario) || !isset($request->id_loja)) {
                 return response()->json([
                     'status' => 401,
                     'mensagem' => 'Não foi possível importar - Erro interno'
@@ -211,14 +201,14 @@ return response()->json([
 
             // return response()->json($csv);
             // return $csv;
-            foreach($csv as $key => $row){
-                if($row[0] != "Handle"){
-                    if(count($row) > 1){
-                        if(isset($row[2]) && isset($row[3]) && strlen($row[1]) < 150){
+            foreach ($csv as $key => $row) {
+                if ($row[0] != "Handle") {
+                    if (count($row) > 1) {
+                        if (isset($row[2]) && isset($row[3]) && strlen($row[1]) < 150) {
                             $listaRetorno[$row[0]][] = [
                                 'titulo' => $row[1],
                                 'descricao' => $row[2],
-                                'preco' =>  (isset($row[20]) ? $row[20] : null) ,
+                                'preco' => (isset($row[20]) ? $row[20] : null),
                                 'imagem' => (isset($row[25]) ? $row[25] : null),
                                 'variacao1' => (isset($row[8]) ? $row[8] : null),
                                 'opcao1' => (isset($row[9]) ? $row[9] : null),
@@ -239,20 +229,20 @@ return response()->json([
             $aux = 0;
             $auximagem = 0;
             // return response()->json($listaRetorno);
-            foreach($listaRetorno as $key => $row){
+            foreach ($listaRetorno as $key => $row) {
 
                 $first = true;
-                foreach($row as $key2 => $row2){
-                    if($first == true){
+                foreach ($row as $key2 => $row2) {
+                    if ($first == true) {
                         $lista[$aux] = $row2;
                         $first = false;
                         $lista[$aux]['imagem'] = [];
-                    }else{
+                    } else {
 
                         $lista[$aux]['titulo'] = ($row2['titulo'] != "" ? $row2['titulo'] : $lista[$aux]['titulo']);
                         $lista[$aux]['descricao'] = ($row2['descricao'] != "" ? $row2['descricao'] : $lista[$aux]['descricao']);
                         $lista[$aux]['preco'] = ($row2['preco'] != "" ? $row2['preco'] : $lista[$aux]['preco']);
-                        $lista[$aux]['imagem'][] = [ $auximagem++ => $row2['imagem'] ];
+                        $lista[$aux]['imagem'][] = [$auximagem++ => $row2['imagem']];
 
                         $lista[$aux]['variacao1'] = ($row2['variacao1'] != "" ? $row2['variacao1'] : $lista[$aux]['variacao1']);
                         $lista[$aux]['variacao2'] = ($row2['variacao2'] != "" ? $row2['variacao2'] : $lista[$aux]['variacao2']);
@@ -271,11 +261,11 @@ return response()->json([
             $auxCountImg = 0;
             $i = 0;
 
-            foreach($lista as $key => $row){
+            foreach ($lista as $key => $row) {
                 $lista[$key] = $row;
                 $auxCountImg = count($lista[$key]['imagem']);
-                while($auxCountImg -1 >= $i){
-                        $lista[$key]['imagem' . ($i+1) ] = $lista[$key]['imagem'][$i][$i];
+                while ($auxCountImg - 1 >= $i) {
+                    $lista[$key]['imagem' . ($i + 1)] = $lista[$key]['imagem'][$i][$i];
 
                     $i++;
                 }
@@ -285,27 +275,27 @@ return response()->json([
                 $auxCountImg = 0;
             }
 
-            foreach($lista as $key => $row){
-                if($row['variacao1'] == 'Title' && $row['opcao1'] == 'Default Title'){
+            foreach ($lista as $key => $row) {
+                if ($row['variacao1'] == 'Title' && $row['opcao1'] == 'Default Title') {
                     $lista[$key]['variacao1'] = null;
                     $lista[$key]['opcao1'] = null;
                 }
-                if($row['variacao2'] == '' && $row['opcao2'] == ''){
+                if ($row['variacao2'] == '' && $row['opcao2'] == '') {
                     $lista[$key]['variacao2'] = null;
                     $lista[$key]['opcao2'] = null;
                 }
-                if($row['variacao3'] == '' && $row['opcao3'] == ''){
+                if ($row['variacao3'] == '' && $row['opcao3'] == '') {
                     $lista[$key]['variacao3'] = null;
                     $lista[$key]['opcao3'] = null;
                 }
 
-                if($row['preco'] == 0 || $row['titulo'] == "" || !isset($row['imagem1'])){
+                if ($row['preco'] == 0 || $row['titulo'] == "" || !isset($row['imagem1'])) {
                     unset($lista[$key]);
 
-                 }
+                }
             }
-            foreach($lista as $key => $row){
-                if(is_numeric($row['preco'])){
+            foreach ($lista as $key => $row) {
+                if (is_numeric($row['preco'])) {
                     DB::table('produto')->insert(
                         $row
                     );
@@ -315,7 +305,7 @@ return response()->json([
                 'status' => 200,
                 'mensagem' => 'Os produtos foram importados com sucesso'
             ]);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Não foi possível importar os produtos'
@@ -323,10 +313,11 @@ return response()->json([
         }
     }
 
-    public function getProdutos(Request $request){
-        try{
+    public function getProdutos(Request $request)
+    {
+        try {
             $qry = DB::select(DB::raw(
-                 "SELECT id_produto,
+                "SELECT id_produto,
                          titulo,
                          preco,
                          sn_loja,
@@ -340,20 +331,20 @@ return response()->json([
                  FROM produto WHERE id_loja = :id_loja"
             ), ['id_loja' => $request->id_loja]);
 
-            foreach($qry as $key => $row){
-                if($row->sn_loja == 's' ){
+            foreach ($qry as $key => $row) {
+                if ($row->sn_loja == 's') {
                     $qry[$key]->sn_loja = true;
-                }else{
+                } else {
                     $qry[$key]->sn_loja = false;
                 }
 
-                if(is_null($row->preco_anterior)){
-                    $qry[$key]->preco_anterior = number_format($row->preco + 30,2);
+                if (is_null($row->preco_anterior)) {
+                    $qry[$key]->preco_anterior = number_format($row->preco + 30, 2);
                 }
             }
 
             return response()->json($qry);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Não foi possível buscar os produtos.'
@@ -362,9 +353,10 @@ return response()->json([
         }
     }
 
-    public function updateProduto(Request $request){
-        try{
-            if($request->campo == 'undefined'){
+    public function updateProduto(Request $request)
+    {
+        try {
+            if ($request->campo == 'undefined') {
                 return response()->json([
                     'status' => 401
                 ]);
@@ -375,7 +367,7 @@ return response()->json([
             return response()->json([
                 'status' => 200
             ]);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json([
                 'status' => 401
@@ -383,9 +375,10 @@ return response()->json([
         }
     }
 
-    public function deleteProduto(Request $request){
-        try{
-            if($request->id_loja == 'undefined' || !isset($request->id_loja) || !isset($request->id_produto)){
+    public function deleteProduto(Request $request)
+    {
+        try {
+            if ($request->id_loja == 'undefined' || !isset($request->id_loja) || !isset($request->id_produto)) {
                 return response()->json([
                     'status' => 401
                 ]);
@@ -397,16 +390,17 @@ return response()->json([
             return response()->json([
                 'status' => 200
             ]);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 401
             ]);
         }
     }
 
-    public function updateSnLoja(Request $request){
-        try{
-            if(!isset($request->loja) || !isset($request->valor) || !isset($request->id_produto)){
+    public function updateSnLoja(Request $request)
+    {
+        try {
+            if (!isset($request->loja) || !isset($request->valor) || !isset($request->id_produto)) {
                 return response()->json([
                     'status' => 401
                 ]);
@@ -423,7 +417,7 @@ return response()->json([
             return response()->json([
                 'status' => 200
             ]);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json([
                 'status' => 401
@@ -431,8 +425,9 @@ return response()->json([
         }
     }
 
-    public function getLoja(Request $request){
-        if(!isset($request->token) || !isset($request->loja) || !isset($request->dominio)){
+    public function getLoja(Request $request)
+    {
+        if (!isset($request->token) || !isset($request->loja) || !isset($request->dominio)) {
             return response()->json([
                 'mensagem' => 'Não autorizado.'
             ]);
@@ -440,12 +435,12 @@ return response()->json([
 
         $verificaToken = DB::select(DB::raw(
             "SELECT * FROM users WHERE token_checkout = :token"
-        ),[
+        ), [
             'token' => $request->token
         ]);
 
 
-        if(empty($verificaToken[0])){
+        if (empty($verificaToken[0])) {
             return response()->json([
                 'mensagem' => 'Não autorizado [001]'
             ]);
@@ -456,10 +451,10 @@ return response()->json([
             "SELECT nm_loja, id_loja, cnpj_loja, email_loja, img_loja, cor_loja
              FROM loja
              WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario .
-             " AND id_loja = " . $request->loja
+            " AND id_loja = " . $request->loja
         ));
 
-        if(empty($verificaLojasUsuario[0])){
+        if (empty($verificaLojasUsuario[0])) {
             return response()->json([
                 'mensagem' => 'Não autorizado - EMP'
             ]);
@@ -468,12 +463,12 @@ return response()->json([
         $dadosUsuario = DB::select(DB::raw(
             "SELECT * FROM usuario_pai" . " WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario
         ));
-        if(empty($dadosUsuario[0])){
+        if (empty($dadosUsuario[0])) {
             return response()->json(['mensagem' => "Não autorizado"]);
         }
         $dataFimToken = $dadosUsuario[0]->dt_fim_token;
 
-        if(strtotime(date('Y-m-d H:i:s')) > strtotime($dataFimToken)){
+        if (strtotime(date('Y-m-d H:i:s')) > strtotime($dataFimToken)) {
             return response()->json([
                 'mensagem' => 'Não autorizado [002]'
             ]);
@@ -518,24 +513,25 @@ return response()->json([
             'categoria' => []
         ];
 
-        foreach($queryProduto as $key => $row){
+        foreach ($queryProduto as $key => $row) {
             $listaRetorno['produtos'][($row->ds_categoria == null ? 'outros' : $row->ds_categoria)][] = $row;
             $flag = false;
-            if(!is_null($row->ds_categoria)){
-                foreach($listaRetorno['categoria'] as $i => $v){
-                    if($v == $row->ds_categoria) $flag = true;
+            if (!is_null($row->ds_categoria)) {
+                foreach ($listaRetorno['categoria'] as $i => $v) {
+                    if ($v == $row->ds_categoria) $flag = true;
                 }
             }
-            if(!$flag) $listaRetorno['categoria'][] = $row->ds_categoria;
+            if (!$flag) $listaRetorno['categoria'][] = $row->ds_categoria;
 
         }
         return response()->json($listaRetorno);
 
     }
 
-    public function getProduto(Request $request){
+    public function getProduto(Request $request)
+    {
 
-        if(!isset($request->token) || !isset($request->loja) || !isset($request->dominio) || !isset($request->p)){
+        if (!isset($request->token) || !isset($request->loja) || !isset($request->dominio) || !isset($request->p)) {
             return response()->json([
                 'mensagem' => 'Não autorizado.'
             ]);
@@ -544,12 +540,12 @@ return response()->json([
 
         $verificaToken = DB::select(DB::raw(
             "SELECT * FROM users WHERE token_checkout = :token"
-        ),[
+        ), [
             'token' => $request->token
         ]);
 
 
-        if(empty($verificaToken[0])){
+        if (empty($verificaToken[0])) {
             return response()->json([
                 'mensagem' => 'Não autorizado [001]'
             ]);
@@ -560,9 +556,9 @@ return response()->json([
             "SELECT nm_loja, id_loja, cnpj_loja, email_loja, img_loja, cor_loja
              FROM loja
              WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario .
-             " AND id_loja = " . $request->loja
+            " AND id_loja = " . $request->loja
         ));
-        if(empty($verificaLojasUsuario[0])){
+        if (empty($verificaLojasUsuario[0])) {
             return response()->json([
                 'mensagem' => 'Não autorizado'
             ]);
@@ -571,12 +567,12 @@ return response()->json([
         $dadosUsuario = DB::select(DB::raw(
             "SELECT * FROM usuario_pai" . " WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario
         ));
-        if(empty($dadosUsuario[0])){
+        if (empty($dadosUsuario[0])) {
             return response()->json(['mensagem' => "Não autorizado"]);
         }
         $dataFimToken = $dadosUsuario[0]->dt_fim_token;
 
-        if(strtotime(date('Y-m-d H:i:s')) > strtotime($dataFimToken)){
+        if (strtotime(date('Y-m-d H:i:s')) > strtotime($dataFimToken)) {
             return response()->json([
                 'mensagem' => 'Não autorizado [002]'
             ]);
@@ -592,7 +588,7 @@ return response()->json([
             WHERE 1=1
             AND l.id_usuario_pai" . " = " . $verificaToken[0]->id_usuario . "
             AND l.id_loja = " . $request->loja . "
-            AND p.id_produto = ". $request->p
+            AND p.id_produto = " . $request->p
         ));
 
         $queryLoja = DB::select(DB::raw(
@@ -609,16 +605,16 @@ return response()->json([
         ));
 
 
-        if(empty($queryProduto[0])){
+        if (empty($queryProduto[0])) {
             return response()->json([
                 'mensagem' => 'Não autorizado [004]'
             ]);
         }
         $produtoImg = [];
 
-        for ($i=1; $i <= 10; $i++) {
-            if($queryProduto[0]->{'imagem' . $i} != null){
-                $produtoImg[] = str_replace('https://', '//',str_replace('http://', '//', $queryProduto[0]->{'imagem' . $i}));
+        for ($i = 1; $i <= 10; $i++) {
+            if ($queryProduto[0]->{'imagem' . $i} != null) {
+                $produtoImg[] = str_replace('https://', '//', str_replace('http://', '//', $queryProduto[0]->{'imagem' . $i}));
             }
         }
 
@@ -633,19 +629,19 @@ return response()->json([
 
         $listaVariacoes = [];
 
-        for($i = 1; $i <= 3; $i++){
-            if($queryProduto[0]->{'variacao' . $i} != null){
+        for ($i = 1; $i <= 3; $i++) {
+            if ($queryProduto[0]->{'variacao' . $i} != null) {
                 $opcoes = explode('%flag%', $queryProduto[0]->{'opcao' . $i});
                 $_opcoes = [];
 
                 $_p = explode('%flag%', $queryProduto[0]->{'p_variacao' . $i});
                 $_p2 = [];
 
-                foreach($_p as $_i => $v){
+                foreach ($_p as $_i => $v) {
                     $_p2[] = $v;
                 }
 
-                foreach($opcoes as $_i => $v){
+                foreach ($opcoes as $_i => $v) {
                     $_opcoes[] = $v;
                 }
 
@@ -653,8 +649,8 @@ return response()->json([
                 array_pop($_p2);
 
                 $l_p = [];
-                foreach($_p2 as $k => $v){
-                    if($v != -1 && $v != '-1'){
+                foreach ($_p2 as $k => $v) {
+                    if ($v != -1 && $v != '-1') {
                         $q = DB::select(DB::raw("SELECT imagem1,
                                                         imagem2,
                                                         imagem3,
@@ -665,7 +661,7 @@ return response()->json([
                                                         id_produto
                                                 FROM produto
                                                 WHERE id_produto = :id"
-                            ), ['id' => $v]);
+                        ), ['id' => $v]);
                         $l_p[] = $q[0];
                     }
                 }
@@ -687,7 +683,7 @@ return response()->json([
         "), ['id' => $request->loja]);
 
         $l = [];
-        foreach($qCategorias as $k => $v){
+        foreach ($qCategorias as $k => $v) {
             $l[] = $v->ds_categoria;
         }
 
@@ -704,10 +700,11 @@ return response()->json([
 
     }
 
-    public function getProdutosLoja(Request $request){
-        try{
+    public function getProdutosLoja(Request $request)
+    {
+        try {
             $qry = DB::select(DB::raw(
-                 "SELECT p.id_produto,
+                "SELECT p.id_produto,
                          p.titulo,
                          p.preco,
                          p.sn_loja,
@@ -724,16 +721,16 @@ return response()->json([
                     AND p.sn_loja = 's'"
             ), ['id_loja' => $request->id_loja]);
 
-            foreach($qry as $key => $row){
-                if($row->sn_loja == 's' ){
+            foreach ($qry as $key => $row) {
+                if ($row->sn_loja == 's') {
                     $qry[$key]->sn_loja = true;
-                }else{
+                } else {
                     $qry[$key]->sn_loja = false;
                 }
             }
 
             return response()->json($qry);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Não foi possível buscar os produtos.'
@@ -743,15 +740,16 @@ return response()->json([
 
     }
 
-    public function adicionaCategoria(Request $request){
-        if(empty($request->id_loja) || $request->id_loja == 'undefined'){
+    public function adicionaCategoria(Request $request)
+    {
+        if (empty($request->id_loja) || $request->id_loja == 'undefined') {
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Erro interno'
             ]);
         }
 
-        try{
+        try {
             DB::table('produto_categoria')->insert([
                 'ds_categoria' => $request->categoria,
                 'id_loja' => $request->id_loja
@@ -775,7 +773,7 @@ return response()->json([
                 'ds' => $lastId[0]->ds,
                 'novaLista' => $listaCategoriasAtualizada
             ]);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json([
                 'status' => 401,
@@ -784,9 +782,10 @@ return response()->json([
         }
     }
 
-    public function getCategorias(Request $request){
-        try{
-            if(is_null($request->id_loja) || empty($request->id_loja)){
+    public function getCategorias(Request $request)
+    {
+        try {
+            if (is_null($request->id_loja) || empty($request->id_loja)) {
                 return response()->json([
                     'status' => 401,
                     'mensagem' => 'Erro interno'
@@ -799,7 +798,7 @@ return response()->json([
                 'status' => 200,
                 'categoria' => $qry
             ]);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Erro interno'
@@ -807,15 +806,16 @@ return response()->json([
         }
     }
 
-    public function updateCategoriaProduto(Request $request){
-        if(is_null($request->id_loja) || empty($request->id_loja || empty($request->id_produto || empty($request->categoria)))){
+    public function updateCategoriaProduto(Request $request)
+    {
+        if (is_null($request->id_loja) || empty($request->id_loja || empty($request->id_produto || empty($request->categoria)))) {
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Erro interno'
             ]);
         }
 
-        try{
+        try {
             $qryupdate = "UPDATE produto
                           SET id_produto_categoria = " . $request->categoria . "
                           WHERE id_produto = " . $request->id_produto;
@@ -823,7 +823,7 @@ return response()->json([
             return response()->json([
                 'status' => 200
             ]);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json([
                 'status' => 401
@@ -832,21 +832,22 @@ return response()->json([
         }
     }
 
-    public function deleteCategoria(Request $request){
-        if(is_null($request->id_loja) || empty($request->id_loja || empty($request->id_categoria ))){
+    public function deleteCategoria(Request $request)
+    {
+        if (is_null($request->id_loja) || empty($request->id_loja || empty($request->id_categoria))) {
             return response()->json([
                 'status' => 401,
                 'mensagem' => 'Erro interno'
             ]);
         }
 
-        try{
+        try {
             $qryupdate = "DELETE FROM produto_categoria WHERE id_produto_categoria = " . $request->id_categoria;
             DB::select(DB::raw($qryupdate));
             return response()->json([
                 'status' => 200
             ]);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $e;
             return response()->json([
                 'status' => 401
@@ -855,14 +856,15 @@ return response()->json([
         }
     }
 
-    public function getLojasCheckout(Request $request){
+    public function getLojasCheckout(Request $request)
+    {
         $helper = new Helper();
 
-        if(
+        if (
             !$helper->verificaParametro($request->tipo_usuario)
             && !$helper->verificaParametro($request->id_usuario)
-        )return response()->json(['status' => 500]);
-        try{
+        ) return response()->json(['status' => 500]);
+        try {
             $campo = 'id_usuario_pai';
             $query = "SELECT id_loja, nm_loja
                     FROM loja
@@ -871,73 +873,75 @@ return response()->json([
             $qry = DB::select(DB::raw($query));
 
             return response()->json($qry);
-        } catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'mensagem' => 'erro interno'
             ]);
         }
-        }
+    }
 
-        public function updateFreteLoja(Request $request){
-            $helper = new Helper();
+    public function updateFreteLoja(Request $request)
+    {
+        $helper = new Helper();
 
-            try{
-                if(
-                    !$helper->verificaParametro($request->id_loja)
-                ||  !$helper->verificaParametro($request->texto)
-                ||  !$helper->verificaParametro($request->preco)
-                ){
-                    return response()->json([
-                        'status' => 500
-                    ]);
-                }
-                $queryVerifica = DB::select(DB::raw("
+        try {
+            if (
+                !$helper->verificaParametro($request->id_loja)
+                || !$helper->verificaParametro($request->texto)
+                || !$helper->verificaParametro($request->preco)
+            ) {
+                return response()->json([
+                    'status' => 500
+                ]);
+            }
+            $queryVerifica = DB::select(DB::raw("
 
                     SELECT id_frete_loja
                     FROM frete_loja
                     WHERE id_loja = :id_loja
 
-                "),[
-                    'id_loja' => $request->id_loja
-                ]);
+                "), [
+                'id_loja' => $request->id_loja
+            ]);
 
-                if(count($queryVerifica) >= 2){
-                    return response()->json([
-                        'status' => 401,
-                        'mensagem' => 'esgotado o limite de fretes'
-                    ]);
-                }
-
-                DB::table('frete_loja')->insert([
-                    'id_loja' => $request->id_loja,
-                    'preco' => $request->preco,
-                    'ds_frete' => $request->texto
-                ]);
-
+            if (count($queryVerifica) >= 2) {
                 return response()->json([
-                    'status' => 200,
-                    'preco' => $request->preco,
-                    'ds_frete' => $request->texto
+                    'status' => 401,
+                    'mensagem' => 'esgotado o limite de fretes'
                 ]);
+            }
 
-            } catch(\Exception $e){
-                return $e;
+            DB::table('frete_loja')->insert([
+                'id_loja' => $request->id_loja,
+                'preco' => $request->preco,
+                'ds_frete' => $request->texto
+            ]);
+
+            return response()->json([
+                'status' => 200,
+                'preco' => $request->preco,
+                'ds_frete' => $request->texto
+            ]);
+
+        } catch (\Exception $e) {
+            return $e;
+            return response()->json([
+                'status' => 500
+            ]);
+        }
+    }
+
+    public function getFretesLoja(Request $request)
+    {
+        try {
+            if (!isset($request->id_loja) || is_null($request->id_loja)) {
                 return response()->json([
                     'status' => 500
                 ]);
             }
-        }
 
-        public function getFretesLoja(Request $request){
-            try {
-                if(!isset($request->id_loja) || is_null($request->id_loja)){
-                    return response()->json([
-                        'status' => 500
-                    ]);
-                }
-
-                $query = DB::select(DB::raw("
+            $query = DB::select(DB::raw("
 
                     SELECT id_frete_loja,
                            preco,
@@ -945,105 +949,107 @@ return response()->json([
                     FROM frete_loja
                     WHERE id_loja = :id_loja
 
-                "),[
-                    'id_loja' => $request->id_loja
-                ]);
+                "), [
+                'id_loja' => $request->id_loja
+            ]);
 
-                return response()->json($query);
-            } catch(\Exception $e){
-                return $e;
-                return response()->json([
-                    'status' => 500
-                ]);
+            return response()->json($query);
+        } catch (\Exception $e) {
+            return $e;
+            return response()->json([
+                'status' => 500
+            ]);
 
-            }
         }
+    }
 
-        public function getProdutosBusca(Request $request){
-            try {
-                $helper = new Helper();
-                if(
-                    !$helper->verificaParametro($request->loja)
-                ||  !$helper->verificaParametro($request->txt)
-                ) return response()->json(['status' => 500]);
+    public function getProdutosBusca(Request $request)
+    {
+        try {
+            $helper = new Helper();
+            if (
+                !$helper->verificaParametro($request->loja)
+                || !$helper->verificaParametro($request->txt)
+            ) return response()->json(['status' => 500]);
 
-                $q = $helper->query(
-                    "SELECT titulo, preco, id_produto as i, imagem1 as img
+            $q = $helper->query(
+                "SELECT titulo, preco, id_produto as i, imagem1 as img
                      FROM produto
                      WHERE id_loja = :id_loja
                            AND titulo LIKE CONCAT('%', :txt, '%')
                      LIMIT 5
                      ",
-                    [
-                        'id_loja' => $request->loja,
-                        'txt' => $request->txt
-                    ]
-                );
+                [
+                    'id_loja' => $request->loja,
+                    'txt' => $request->txt
+                ]
+            );
 
-                if(empty($q)) return response()->json(['status' => 404]);
-                return response()->json(['status' => 200, 'produtos' => $q ]);
-            } catch(\Exception $e){
-                return response()->json([
-                    'status' => 500
-                ]);
-            }
+            if (empty($q)) return response()->json(['status' => 404]);
+            return response()->json(['status' => 200, 'produtos' => $q]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500
+            ]);
+        }
+    }
+
+    public function getLojaCategoria(Request $request)
+    {
+        if (!isset($request->token) || !isset($request->loja) || !isset($request->dominio) || !isset($request->categoria)) {
+            return response()->json([
+                'mensagem' => 'Não autorizado.'
+            ]);
         }
 
-        public function getLojaCategoria(Request $request){
-            if(!isset($request->token) || !isset($request->loja) || !isset($request->dominio) || !isset($request->categoria)){
-                return response()->json([
-                    'mensagem' => 'Não autorizado.'
-                ]);
-            }
+        $verificaToken = DB::select(DB::raw(
+            "SELECT * FROM users WHERE token_checkout = :token"
+        ), [
+            'token' => $request->token
+        ]);
 
-            $verificaToken = DB::select(DB::raw(
-                "SELECT * FROM users WHERE token_checkout = :token"
-            ),[
-                'token' => $request->token
+
+        if (empty($verificaToken[0])) {
+            return response()->json([
+                'mensagem' => 'Não autorizado [001]'
             ]);
+        }
 
-
-            if(empty($verificaToken[0])){
-                return response()->json([
-                    'mensagem' => 'Não autorizado [001]'
-                ]);
-            }
-
-            $tipoUsuario = $verificaToken[0]->tipo_usuario;
-            $verificaLojasUsuario = DB::select(DB::raw(
-                "SELECT nm_loja, id_loja, cnpj_loja, email_loja, img_loja, cor_loja
+        $tipoUsuario = $verificaToken[0]->tipo_usuario;
+        $verificaLojasUsuario = DB::select(DB::raw(
+            "SELECT nm_loja, id_loja, cnpj_loja, email_loja, img_loja, cor_loja
                     FROM loja
                     WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario .
-                    " AND id_loja = " . $request->loja
-            ));
-            if(empty($verificaLojasUsuario[0])){
-                return response()->json([
-                    'mensagem' => 'Não autorizado'
-                ]);
-            }
+            " AND id_loja = " . $request->loja
+        ));
+        if (empty($verificaLojasUsuario[0])) {
+            return response()->json([
+                'mensagem' => 'Não autorizado'
+            ]);
+        }
 
-            $dadosUsuario = DB::select(DB::raw(
-                "SELECT * FROM usuario_pai" . " WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario
-            ));
-            if(empty($dadosUsuario[0])){
-                return response()->json(['mensagem' => "Não autorizado"]);
-            }
-            $dataFimToken = $dadosUsuario[0]->dt_fim_token;
+        $dadosUsuario = DB::select(DB::raw(
+            "SELECT * FROM usuario_pai" . " WHERE id_usuario_pai" . " = " . $verificaToken[0]->id_usuario
+        ));
+        if (empty($dadosUsuario[0])) {
+            return response()->json(['mensagem' => "Não autorizado"]);
+        }
+        $dataFimToken = $dadosUsuario[0]->dt_fim_token;
 
-            if(strtotime(date('Y-m-d H:i:s')) > strtotime($dataFimToken)){
-                return response()->json([
-                    'mensagem' => 'Não autorizado [002]'
-                ]);
-            }
+        if (strtotime(date('Y-m-d H:i:s')) > strtotime($dataFimToken)) {
+            return response()->json([
+                'mensagem' => 'Não autorizado [002]'
+            ]);
+        }
 
-            $getCategoria = DB::select(DB::raw("
+        $getCategoria = DB::select(DB::raw("
                 SELECT cd_categoria
                 FROM produto_categoria
                 WHERE
             "));
 
-            $queryProduto = DB::select(DB::raw(
-                "SELECT
+        $queryProduto = DB::select(DB::raw(
+            "SELECT
                         p.*,
                         pc.ds_categoria
                 FROM loja l
@@ -1054,10 +1060,10 @@ return response()->json([
                 AND l.id_loja = " . $request->loja . "
                 AND p.sn_loja = 's'
                 "
-            ));
+        ));
 
-            $queryLoja = DB::select(DB::raw(
-                "SELECT l.nm_loja,
+        $queryLoja = DB::select(DB::raw(
+            "SELECT l.nm_loja,
                         l.id_loja,
                         l.cnpj_loja,
                         l.email_loja,
@@ -1073,31 +1079,29 @@ return response()->json([
                 WHERE 1=1
                 AND l.id_usuario_pai" . " = " . $verificaToken[0]->id_usuario . "
                 AND l.id_loja = " . $request->loja
-            ));
+        ));
 
-            $listaRetorno = [
-                'loja' => $queryLoja[0],
-                'produtos' => [],
-                'categoria' => []
-            ];
+        $listaRetorno = [
+            'loja' => $queryLoja[0],
+            'produtos' => [],
+            'categoria' => []
+        ];
 
-            foreach($queryProduto as $key => $row){
-                $listaRetorno['produtos'][($row->ds_categoria == null ? 'outros' : $row->ds_categoria)][] = $row;
-                $flag = false;
-                if(!is_null($row->ds_categoria)){
-                    foreach($listaRetorno['categoria'] as $i => $v){
-                        if($v == $row->ds_categoria) $flag = true;
-                    }
+        foreach ($queryProduto as $key => $row) {
+            $listaRetorno['produtos'][($row->ds_categoria == null ? 'outros' : $row->ds_categoria)][] = $row;
+            $flag = false;
+            if (!is_null($row->ds_categoria)) {
+                foreach ($listaRetorno['categoria'] as $i => $v) {
+                    if ($v == $row->ds_categoria) $flag = true;
                 }
-                if(!$flag) $listaRetorno['categoria'][] = $row->ds_categoria;
-
             }
-            return response()->json($listaRetorno);
-
+            if (!$flag) $listaRetorno['categoria'][] = $row->ds_categoria;
 
         }
+        return response()->json($listaRetorno);
 
 
+    }
 
 
 }
