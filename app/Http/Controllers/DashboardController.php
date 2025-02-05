@@ -747,31 +747,27 @@ class DashboardController extends Controller
     public function updatePreferencias(Request $request)
     {
         try {
-            $verifica = $this->helper()->query("
-                SELECT resumo_aberto, ultimo_dia
-                FROM checkout_preferencias
-                WHERE id_loja = :id_loja
-            ", [
-                'id_loja' => $request->id_loja,
-            ]);
+            $preference_exists = DB::table('checkout_preferencias')
+                ->where('id_loja', $request->id_loja)
+                ->exists();
 
-            if (empty($verifica)) {
+            if ($preference_exists) {
+                DB::table('checkout_preferencias')
+                    ->where('id_loja', $request->id_loja)
+                    ->update([$request->c => $request->v]);
+            } else {
                 DB::table('checkout_preferencias')->insert([
                     $request->c => $request->v,
                     'id_loja' => $request->id_loja
                 ]);
-
-                return response()->json(['status' => 200]);
             }
 
-            $sql = "UPDATE checkout_preferencias
-                    SET " . $request->c . " = '" . $request->v . "'
-                    WHERE id_loja = " . $request->id_loja;
-            $this->helper()->query($sql);
-
             return response()->json(['status' => 200]);
-        } catch (\Exception $e) {
-            return response()->json(['status' => 500]);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'status' => 500,
+                'message' => $exception->getMessage()
+            ]);
         }
     }
 
