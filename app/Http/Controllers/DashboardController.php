@@ -283,7 +283,7 @@ class DashboardController extends Controller
     public function getPedidos(Request $request)
     {
         try {
-            $subQuery = DB::table('usuario_pai as up')
+            $subQueryUsers = DB::table('usuario_pai as up')
                 ->join('loja as l', 'l.id_usuario_pai', '=', 'up.id_usuario_pai')
                 ->when($request->id_usuario, function ($query) use ($request) {
                     $query->where('up.id_usuario_pai', $request->id_usuario);
@@ -298,10 +298,9 @@ class DashboardController extends Controller
             $orders = DB::table('carrinho as c')
                 ->join('order_product as op', 'op.order_id', '=', 'c.id_carrinho')
                 ->join('produto as p', 'p.id_produto', '=', 'op.product_id')
-                ->joinSub($subQuery, 'sq', function ($join) {
-                    $join->on('c.id_loja', '=', 'sq.id_loja');
+                ->joinSub($subQueryUsers, 'squ', function ($join) {
+                    $join->on('c.id_loja', '=', 'squ.id_loja');
                 })
-                ->leftJoin('transactions as t', 't.hash', '=', 'c.hash')
                 ->whereNull('c.data_delete')
                 // ->whereBetween('c.data_pedido', [$inicio, $fim])
                 ->when($abandoned, function ($query) {
@@ -312,9 +311,9 @@ class DashboardController extends Controller
                 ->groupBy('c.id_carrinho')
                 ->orderBy('c.data_pedido', 'DESC')
                 ->select(
-                    'sq.usuario', 'p.preco', 'c.id_carrinho', 'c.dt_instancia_carrinho', 'c.nome_completo', 'c.email',
+                    'squ.usuario', 'c.id_carrinho', 'c.dt_instancia_carrinho', 'c.nome_completo', 'c.email',
                     'c.cpf', 'c.telefone', 'c.frete_selecionado', 'c.frete_selecionado_valor', 'c.finalizou_pedido', 'c.sn_pix_copiado',
-                    'c.id_loja', 'c.metodo_pagamento', 'c.hash', 'c.status_pagamento', 'c.email_senha', 't.status',
+                    'c.id_loja', 'c.metodo_pagamento', 'c.hash', 'c.status_pagamento', 'c.email_senha', 'c.gateway_status AS status',
                 )
                 ->selectRaw("
                     GROUP_CONCAT(p.titulo SEPARATOR ' + ') AS titulo,

@@ -283,6 +283,7 @@ class CheckoutController extends Controller
                 DB::table('carrinho')
                     ->where('hash', $request->hash)
                     ->update([
+                        'gateway_status' => ucfirst($response['status']),
                         'finalizou_pedido' => 's',
                         'data_pedido' => now(),
                     ]);

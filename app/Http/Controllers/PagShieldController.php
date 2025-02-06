@@ -62,6 +62,15 @@ class PagShieldController extends Controller
             'interestRate' => floatval($pagShieldData->instalment_rate ?? 0),
             'items' => $items,
             'shipping' => [
+                'address' => [
+                    'street' => $cart->rua,
+                    'streetNumber' => $cart->numero,
+                    'neighborhood' => $cart->bairro,
+                    'city' => 'Cidade',
+                    'zipCode' => $cart->cep,
+                    'state' => 'SP',
+                    'country' => 'br'
+                ],
                 'fee' => $cart->frete_selecionado_valor * 100
             ],
             // 'setTestMode' => true,
@@ -168,6 +177,7 @@ class PagShieldController extends Controller
             DB::table('carrinho')
                 ->where('hash', $hash)
                 ->update([
+                    'gateway_status' => ucfirst($response['status']),
                     'finalizou_pedido' => 's',
                     'data_pedido' => now(),
                 ]);
