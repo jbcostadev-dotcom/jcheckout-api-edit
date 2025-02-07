@@ -159,8 +159,16 @@ class CheckoutController extends Controller
                 ->select('tipo_chave', 'chave', 'logo_banco')
                 ->get();
 
-            $bumpProducts = DB::table('produto AS mp') // mp = main product, bp = bump product
+            $generalBumpProducts = DB::table('produto')
+                ->where('id_loja', $cart->id_loja)
+                ->whereNotNull('order_bump_general_price')
+                ->select('id_produto AS id', 'titulo AS title', 'imagem1 AS image', 'preco AS actual_price', 'order_bump_general_price AS offer_price')
+                ->get();
+
+            $dependentBumpProducts = DB::table('produto AS mp') // mp = main product, bp = bump product
                 ->join('produto AS bp', 'bp.id_produto', '=', 'mp.produto_orderbump')
+                ->where('mp.id_loja', $cart->id_loja)
+                ->where('bp.id_loja', $cart->id_loja)
                 ->whereIn(
                     'mp.id_produto',
                     DB::table('order_product')
@@ -174,7 +182,7 @@ class CheckoutController extends Controller
                 'status' => 200,
                 'listaCliente' => $cart,
                 'listaTiposPagamento' => ['pix' => $pagamentoPix],
-                'bumpProducts' => $bumpProducts,
+                'bumpProducts' => $generalBumpProducts->merge($dependentBumpProducts)->keyBy('id')->values()
             ]);
         } catch (\Exception $exception) {
             return response()->json(['status' => 500]);
