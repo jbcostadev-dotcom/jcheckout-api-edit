@@ -1040,6 +1040,7 @@ class CheckoutController extends Controller
 
             return response()->json([
                 'status' => 200,
+                'shop' => DB::table('loja')->where('id_loja', $order->id_loja)->first(),
                 'order' => $order,
             ]);
         } catch (\Exception $exception) {
