@@ -67,7 +67,7 @@ class PagShieldController extends Controller
                     'streetNumber' => $cart->numero,
                     'neighborhood' => $cart->bairro,
                     'city' => 'Cidade',
-                    'zipCode' => $cart->cep,
+                    'zipCode' => preg_replace("/\D/", "", $cart->cep),
                     'state' => 'SP',
                     'country' => 'br'
                 ],
