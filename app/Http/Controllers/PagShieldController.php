@@ -71,7 +71,7 @@ class PagShieldController extends Controller
                     'state' => 'SP',
                     'country' => 'br'
                 ],
-                'fee' => $cart->frete_selecionado_valor * 100
+                'fee' => intval($cart->frete_selecionado_valor * 100)
             ],
             // 'setTestMode' => true,
         ];
