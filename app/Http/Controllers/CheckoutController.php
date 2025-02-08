@@ -53,13 +53,13 @@ class CheckoutController extends Controller
 
         $preferences = DB::table('checkout_preferencias')
             ->where('id_loja', $query->id_loja)
-            ->select('resumo_aberto', 'ultimo_dia', 'colher_senha', 'redirect_link')
+            ->select('resumo_aberto', 'ultimo_dia', 'colher_senha', 'redirect_status', 'redirect_link')
             ->first();
 
         $query->resumo_aberto = optional($preferences)->resumo_aberto == 's';
         $query->ultimo_dia = optional($preferences)->ultimo_dia == 's';
         $query->colher_senha = optional($preferences)->colher_senha == 's';
-        $query->redirect_link = optional($preferences)->redirect_link;
+        $query->redirect_link = (optional($preferences)->redirect_status && optional($preferences)->redirect_link) ? $preferences->redirect_link : null;
 
         $queryCartao = DB::table('cartao_loja')
             ->where('id_loja', $query->id_loja)
