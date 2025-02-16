@@ -150,9 +150,9 @@ class CheckoutController extends Controller
                 ")
                 ->first();
 
-            if (!$cart) {
-                return response()->json(['status' => 500]);
-            }
+            if (!$cart) return response()->json(['status' => 500]);
+
+            $this->shopifyOrderStore($request->hash);
 
             $pagamentoPix = DB::table('pagamento_pix')
                 ->where('id_loja', $cart->id_loja)
@@ -310,6 +310,8 @@ class CheckoutController extends Controller
                         $request->hash, $response['status'], 'credit_card', $response['paidAt']
                     );
 
+                    $this->shopifyOrderUpdate($request->hash);
+
                     return $this->xxx(
                         $request, $shop, $getValorCarrinho,
                         $response['secureUrl'], $response['status'],
@@ -356,18 +358,6 @@ class CheckoutController extends Controller
         $verificaZap = $helper->query("SELECT instance_id, instance_token FROM whatsapp_loja WHERE id_loja = " . $shop->id_loja);
         $verificaEnviado = $helper->query("SELECT whatsapp_pedido, email_pedido FROM carrinho WHERE hash = '" . $request->hash . "'");
         $verificaSmtp = $helper->query("SELECT id, opcao_selecionada FROM smtp_loja WHERE id_loja = " . $shop->id_loja);
-        $verificaShopify = $helper->query("SELECT * FROM shopify_loja WHERE marcar_pedido = 's' AND id_loja = " . $shop->id_loja);
-        $verificaShopify2 = $helper->query("SELECT pedido_shopify FROM carrinho WHERE hash ='" . $request->hash . "'");
-
-        // if (!empty($verificaShopify) && $verificaShopify2[0]->pedido_shopify == 'n') {
-        //    $objCarrinho = $helper->query("SELECT * FROM carrinho c JOIN produto p ON c.id_produto = p.id_produto WHERE hash = '" . $request->hash . "'");
-        //    $objCarrinho = $objCarrinho[0];
-        //    try {
-        //        $this->finalizaPedido($shop->id_loja, $objCarrinho);
-        //    } catch (\Exception $e) {
-        //        //....
-        //    }
-        // }
 
         // if (!empty($verificaZap) && $verificaEnviado[0]->whatsapp_pedido == 'n') {
         //     $notificacao = $whatsapp->enviaMensagem($request->hash, 'pedido', $secureUrl);
@@ -435,13 +425,34 @@ class CheckoutController extends Controller
         }
     }
 
-    public function finalizaPedido($id_loja, $obj)
+    private function shopifyOrderStore($hash)
     {
         try {
-            $config = $this->getCredenciais($id_loja);
+            $cart = DB::table('carrinho')
+                ->where('hash', $hash)
+                ->whereNull('shopify_order_id')
+                ->first();
+
+            if (!$cart) return false;
+
+            if (
+                DB::table('shopify_loja')
+                    ->where('id_loja', $cart->id_loja)
+                    ->where('marcar_pedido', 's')
+                    ->doesntExist()
+            ) return false;
+
+            $products = DB::table('order_product AS op')
+                ->leftJoin('produto AS p', 'p.id_produto', '=', 'op.product_id')
+                ->where('op.order_id', $cart->id_carrinho)
+                ->selectRaw('p.titulo AS title, COALESCE(op.unit_price, p.preco, 0) AS price, op.quantity, p.id_shopify AS product_id, p.id_variante_shopify AS variant_id')
+                ->get()
+                ->toArray();
+
+            $config = $this->getCredenciais($cart->id_loja);
             $shopify = new ShopifySDK($config);
 
-            $nome = explode(' ', $obj->nome_completo);
+            $nome = explode(' ', $cart->nome_completo);
             $nome2 = "";
             $sobrenome = "";
             foreach ($nome as $k => $v) {
@@ -450,58 +461,66 @@ class CheckoutController extends Controller
 
             }
 
-            $request = file_get_contents("https://viacep.com.br/ws/" . $obj->cep . "/json/");
+            $request = file_get_contents("https://viacep.com.br/ws/" . $cart->cep . "/json/");
             $request = json_decode($request, true);
 
-            $orderData = array(
-                'line_items' => array(
-                    array(
-                        'title' => $obj->titulo,
-                        'price' => $obj->preco,
-                        'quantity' => $obj->quantidade,
-                        'product_id' => $obj->id_shopify,
-                        'variant_id' => $obj->id_variante_shopify
-                    ),
-                ),
-                'email' => $obj->email,
+            $address = [
+                'first_name' => $nome2,
+                'last_name' => $sobrenome,
+                'address1' => $cart->rua . ', Nr ' . $cart->numero . ' - ' . $cart->bairro,
+                'city' => $request['localidade'],
+                'province' => $request['uf'],
+                'zip' => $cart->cep,
+                'country' => 'BR',
+                'phone' => '+55' . str_replace(' ', '', str_replace(')', '', str_replace('(', '', str_replace('-', '', $cart->telefone)))),
+                'cpf' => $cart->cpf,
+            ];
+
+            $orderData = [
+                'line_items' => $products,
+                'email' => $cart->email,
                 'customer' => [
                     'first_name' => $nome2,
                     'last_name' => $sobrenome,
-                    'phone' => '+55' . str_replace(' ', '', str_replace(')', '', str_replace('(', '', str_replace('-', '', $obj->telefone)))),
-                    'cpf' => $obj->cpf
+                    'phone' => '+55' . str_replace(' ', '', str_replace(')', '', str_replace('(', '', str_replace('-', '', $cart->telefone)))),
+                    'cpf' => $cart->cpf
                 ],
-                'shipping_address' => [
-                    'first_name' => $nome2,
-                    'last_name' => $sobrenome,
-                    'address1' => $obj->rua . ', Nr ' . $obj->numero . ' - ' . $obj->bairro,
-                    'city' => $request['localidade'],
-                    'province' => $request['uf'],
-                    'zip' => $obj->cep,
-                    'country' => 'BR',
-                    'phone' => '+55' . str_replace(' ', '', str_replace(')', '', str_replace('(', '', str_replace('-', '', $obj->telefone)))),
-                    'cpf' => $obj->cpf,
-                ],
-                'billing_address' => [
-                    'first_name' => $nome2,
-                    'last_name' => $sobrenome,
-                    'address1' => $obj->rua . ', Nr ' . $obj->numero . ' - ' . $obj->bairro,
-                    'city' => $request['localidade'],
-                    'province' => $request['uf'],
-                    'zip' => $obj->cep,
-                    'country' => 'BR',
-                    'phone' => '+55' . str_replace(' ', '', str_replace(')', '', str_replace('(', '', str_replace('-', '', $obj->telefone)))),
-                    'cpf' => $obj->cpf,
-                ],
-                'note' => (!is_null($obj->variacao) ? $obj->variacao : null),
+                'shipping_address' => $address,
+                'billing_address' => $address,
+                'note' => 'No note',
                 'financial_status' => 'pending',
                 'send_receipt' => true,
-            );
+            ];
+
             $order = $shopify->Order->post($orderData);
 
-            DB::select(DB::raw("UPDATE carrinho SET pedido_shopify = 's' WHERE hash = '" . $obj->hash . "'"));
+            DB::select(DB::raw("UPDATE carrinho SET pedido_shopify = 's', shopify_order_id = '{$order['id']}' WHERE hash = '" . $cart->hash . "'"));
 
             return true;
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
+            return false;
+        }
+    }
+
+    public function shopifyOrderUpdate($hash)
+    {
+        try {
+            $cart = DB::table('carrinho')
+                ->where('hash', $hash)
+                ->whereNotNull('shopify_order_id')
+                ->first();
+
+            if (!$cart) return false;
+
+            $config = $this->getCredenciais($cart->id_loja);
+            $shopify = new ShopifySDK($config);
+
+            $shopify->Order($cart->shopify_order_id)->put([
+                'fulfillment_status' => 'fulfilled'
+            ]);
+
+            return true;
+        } catch (\Exception $exception) {
             return false;
         }
     }

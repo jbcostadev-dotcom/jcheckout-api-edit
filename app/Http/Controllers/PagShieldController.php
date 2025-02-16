@@ -182,6 +182,8 @@ class PagShieldController extends Controller
                     'data_pedido' => now(),
                 ]);
 
+            (new \App\Http\Controllers\CheckoutController())->shopifyOrderUpdate($hash);
+
             return ['status' => '200', 'message' => $response['status']];
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
