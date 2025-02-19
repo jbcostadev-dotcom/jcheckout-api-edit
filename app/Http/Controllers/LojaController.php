@@ -36,6 +36,7 @@ class LojaController extends Controller
                         'nm_loja' => $request->nome_loja,
                         'id_usuario_pai' => $request->id_usuario,
                         'cd_tipo_checkout' => $request->tipo_checkout,
+                        'shop_type' => $request->shop_type,
                     ]);
 
                     return response()->json([
