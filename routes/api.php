@@ -110,7 +110,6 @@ Route::group(['middleware' => ['auth:sanctum', 'cors']], function () {
     Route::post('/dashboard/getDominioCheckout', [DashboardController:: class, 'getDominioCheckout']);
     Route::post('/dashboard/getOrderBumpProduto', [DashboardController:: class, 'getOrderBumpProduto']);
     Route::post('/dashboard/updateOrderBump', [DashboardController:: class, 'updateOrderBump']);
-    Route::post('/dashboard/updateOrderBumpGeneral', [DashboardController:: class, 'updateOrderBumpGeneral']);
     Route::post('/dashboard/resetaEst', [DashboardController:: class, 'resetaEst']);
     Route::post('/dashboard/updateFretePadrao', [DashboardController:: class, 'updateFretePadrao']);
     Route::post('/dashboard/getFretePadrao', [DashboardController:: class, 'getFretePadrao']);

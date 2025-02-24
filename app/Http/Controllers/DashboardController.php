@@ -796,23 +796,23 @@ class DashboardController extends Controller
     public function getOrderBumpProduto(Request $request)
     {
         try {
-            $query = $this->helper()->query("
-                SELECT produto_orderbump, valor_orderbump
-                FROM produto
-                WHERE id_produto = " . $request->p);
+            $bumpData = DB::table('produto')
+                ->select('produto_orderbump', 'valor_orderbump', 'order_bump_general_price')
+                ->where('id_produto', $request->p)
+                ->first();
 
-            $queryProdutos = $this->helper()->query("
-                SELECT id_produto as cd_produto,
-                       titulo as ds_produto
-                FROM produto
-                WHERE id_loja = " . $request->l);
+            $allProducts = DB::table('produto')
+                ->select('id_produto as cd_produto', 'titulo as ds_produto')
+                ->where('id_loja', $request->l)
+                ->get();
 
             return response()->json([
-                'p' => (!empty($query[0]->produto_orderbump) ? $query[0]->produto_orderbump : null),
-                'vl' => (!empty($query[0]->valor_orderbump) ? $query[0]->valor_orderbump : null),
-                'produtos' => $queryProdutos
+                'p' => $bumpData->produto_orderbump ?? null,
+                'vl' => $bumpData->valor_orderbump ?? null,
+                'gp' => $bumpData->order_bump_general_price ?? null,
+                'produtos' => $allProducts
             ]);
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             return response()->json(['status' => 500]);
         }
     }
@@ -820,31 +820,22 @@ class DashboardController extends Controller
     public function updateOrderBump(Request $request)
     {
         try {
-            $p_order = ($request->o_p == '-1' ? null : $request->o_p);
-
-            $this->helper()->query("
-                UPDATE produto
-                SET produto_orderbump = " . (is_null($p_order) ? 'NULL' : $p_order) . ",
-                    valor_orderbump = " . $request->o_vl . "
-                WHERE id_produto = " . $request->p);
-
-            return response()->json(['status' => 200]);
-        } catch (\Exception $e) {
-            return response()->json(['status' => 500]);
-        }
-    }
-
-    public function updateOrderBumpGeneral(Request $request)
-    {
-        try {
-            DB::table('produto')
-                ->where('id_produto', $request->bumpable_product_id)
-                ->update([
-                    'order_bump_general_price' => $request->bumpable_product_price
-                ]);
+            if ($request->tag === 'orderbump') {
+                DB::table('produto')
+                    ->where('id_produto', $request->p)
+                    ->update([
+                        'produto_orderbump' => $request->o_p == '-1' ? null : $request->o_p,
+                        'valor_orderbump' => $request->o_vl ?: null,
+                    ]);
+            } elseif ($request->tag === 'orderbump_general') {
+                DB::table('produto')
+                    ->where('id_produto', $request->p)
+                    ->update([
+                        'order_bump_general_price' => $request->o_vl ?: null
+                    ]);
+            }
 
             return response()->json(['status' => 200]);
-
         } catch (\Exception $e) {
             return response()->json(['status' => 500]);
         }
