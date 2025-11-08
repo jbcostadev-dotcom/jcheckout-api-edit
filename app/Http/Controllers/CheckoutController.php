@@ -201,6 +201,10 @@ class CheckoutController extends Controller
                     'img' => 'pag',
                     'texto' => 'PagSeguro'
                 ],
+                'brazaPay' => [
+                    'img' => 'brazapay',
+                    'texto' => 'BrazaPay'
+                ],
                 'inter' => [
                     'img' => 'inter',
                     'texto' => 'Inter'
@@ -271,9 +275,21 @@ class CheckoutController extends Controller
                 ->first();
 
             if (in_array($shop->metodo_pagamento, ['cartao', 'pix'])) {
-                $response = (new PagShieldController())->createTransaction(
-                    $request->hash, $request->postbackUrl, $shop->metodo_pagamento
-                );
+                $gateway = DB::table('pagamento_pix')
+                    ->where('id_loja', $shop->id_loja)
+                    ->whereIn('logo_banco', ['pagShield', 'brazaPay'])
+                    ->orderBy('id', 'DESC')
+                    ->value('logo_banco');
+
+                if ($gateway === 'brazaPay') {
+                    $response = (new BrazaPayController())->createTransaction(
+                        $request->hash, $request->postbackUrl, $shop->metodo_pagamento
+                    );
+                } else {
+                    $response = (new PagShieldController())->createTransaction(
+                        $request->hash, $request->postbackUrl, $shop->metodo_pagamento
+                    );
+                }
 
                 if ($response['status'] == 404) {
                     $response['custom_error_message'] = $this->getErrorMessage($shop->id_loja);
