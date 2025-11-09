@@ -22,7 +22,7 @@ class DashboardController extends Controller
         try {
             $data = new stdClass();
 
-            if ($request->banco === 'pagShield') {
+            if (in_array($request->banco, ['pagShield', 'brazaPay'])) {
                 if (
                     !$this->helper()->verificaParametro($request->id_loja)
                     || !$this->helper()->verificaParametro($request->secretKey)
@@ -32,7 +32,7 @@ class DashboardController extends Controller
                     || !$this->helper()->verificaParametro($request->tipo_usuario)
                 ) return response()->json(['status' => 500]);
 
-                $data->tipo_chave = 'PagShield';
+                $data->tipo_chave = ($request->banco === 'brazaPay' ? 'BrazaPay' : 'PagShield');
                 $data->chave = $request->secretKey;
                 $data->id_loja = $request->id_loja;
                 $data->id_tipo_chave = 0;
