@@ -338,10 +338,25 @@ class CheckoutController extends Controller
                         $request->hash, $response['status'], 'pix'
                     );
 
+                    $pixCode = null;
+                    if (($gateway ?? null) === 'brazaPay') {
+                        // BrazaPay responses commonly use 'pix_code'
+                        $pixCode = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
+                    } else {
+                        $pixCode = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
+                    }
+
+                    if (empty($pixCode)) {
+                        return response()->json([
+                            'status' => 404,
+                            'message' => 'PIX code not available from gateway response'
+                        ]);
+                    }
+
                     return $this->xxx(
                         $request, $shop, $getValorCarrinho,
-                        $response['pix']['qrcode'], $response['status'],
-                        $response['id'], 'pix'
+                        $pixCode, $response['status'],
+                        $response['id'] ?? null, 'pix'
                     );
                 } else {
                     return response()->json([
