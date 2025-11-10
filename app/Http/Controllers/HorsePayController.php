@@ -5,9 +5,20 @@ namespace App\Http\Controllers;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class HorsePayController extends Controller
 {
+    private function logAttempt(array $payload)
+    {
+        try {
+            $line = json_encode($payload, JSON_UNESCAPED_UNICODE);
+            $path = storage_path('logs/horsepay_attempts.log');
+            \Illuminate\Support\Facades\File::append($path, $line . PHP_EOL);
+        } catch (\Throwable $e) {
+            // Silently ignore logging errors
+        }
+    }
     private function getShopDataByHash($hash)
     {
         return DB::table('carrinho')
@@ -31,15 +42,32 @@ class HorsePayController extends Controller
                 return false;
             }
 
-            $response = $client->request('POST', 'https://api.horsepay.io/auth/token', [
+            $endpoint = 'https://api.horsepay.io/auth/token';
+            $headers = [
                 'headers' => [
                     'accept' => 'application/json',
                     'content-type' => 'application/json',
                 ],
-                'body' => json_encode([
-                    'client_key' => $pix->public_key,
-                    'client_secret' => $pix->chave,
-                ]),
+            ];
+            $body = [
+                'client_key' => $pix->public_key,
+                'client_secret' => $pix->chave,
+            ];
+
+            $this->logAttempt([
+                'ts' => now()->toIso8601String(),
+                'event' => 'create_token_request',
+                'id_loja' => $idLoja,
+                'endpoint' => $endpoint,
+                'headers' => [
+                    'content-type' => 'application/json',
+                ],
+                'body' => $body,
+            ]);
+
+            $response = $client->request('POST', $endpoint, [
+                'headers' => $headers['headers'],
+                'body' => json_encode($body),
             ]);
 
             $data = json_decode($response->getBody(), true);
@@ -51,11 +79,30 @@ class HorsePayController extends Controller
                     ->where('logo_banco', 'horsePay')
                     ->update(['token_horsepay' => $token]);
 
+                $this->logAttempt([
+                    'ts' => now()->toIso8601String(),
+                    'event' => 'create_token_success',
+                    'id_loja' => $idLoja,
+                    'token_preview' => Str::limit($token, 20, '...'),
+                ]);
                 return $token;
             }
 
+            $this->logAttempt([
+                'ts' => now()->toIso8601String(),
+                'event' => 'create_token_empty',
+                'id_loja' => $idLoja,
+                'response' => $data,
+            ]);
             return false;
         } catch (RequestException $e) {
+            $this->logAttempt([
+                'ts' => now()->toIso8601String(),
+                'event' => 'create_token_error',
+                'id_loja' => $idLoja,
+                'error' => $e->getMessage(),
+                'response' => $e->hasResponse() ? (string) $e->getResponse()->getBody() : null,
+            ]);
             return false;
         }
     }
@@ -93,19 +140,46 @@ class HorsePayController extends Controller
         }) + ($cart->frete_selecionado_valor ?? 0);
 
         try {
-            $response = $client->request('POST', 'https://api.horsepay.io/transaction/neworder', [
+            $endpoint = 'https://api.horsepay.io/transaction/neworder';
+            $reqHeaders = [
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $token,
+            ];
+            $reqBody = [
+                'payer_name' => $cart->nome_completo ?? 'Cliente',
+                'amount' => (float) number_format($amount, 2, '.', ''),
+                'callback_url' => $postbackUrl,
+            ];
+
+            $this->logAttempt([
+                'ts' => now()->toIso8601String(),
+                'event' => 'neworder_request',
+                'hash' => $hash,
+                'id_loja' => $cart->id_loja,
+                'endpoint' => $endpoint,
                 'headers' => [
                     'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer ' . $token,
+                    // Mask token to avoid leaking secrets in logs
+                    'Authorization' => 'Bearer ' . Str::limit($token, 12, '...'),
                 ],
-                'body' => json_encode([
-                    'payer_name' => $cart->nome_completo ?? 'Cliente',
-                    'amount' => (float) number_format($amount, 2, '.', ''),
-                    'callback_url' => $postbackUrl,
-                ]),
+                'body' => $reqBody,
+            ]);
+
+            $response = $client->request('POST', $endpoint, [
+                'headers' => $reqHeaders,
+                'body' => json_encode($reqBody),
             ]);
 
             $data = json_decode($response->getBody(), true);
+
+            $this->logAttempt([
+                'ts' => now()->toIso8601String(),
+                'event' => 'neworder_success',
+                'hash' => $hash,
+                'id_loja' => $cart->id_loja,
+                'status_code' => method_exists($response, 'getStatusCode') ? $response->getStatusCode() : 200,
+                'response_keys' => array_keys($data ?? []),
+            ]);
 
             // Normaliza para interface comum (status 200 esperado pelo CheckoutController)
             return [
@@ -120,6 +194,14 @@ class HorsePayController extends Controller
                 'qrcodeImage' => $data['payment'] ?? null,
             ];
         } catch (RequestException $exception) {
+            $this->logAttempt([
+                'ts' => now()->toIso8601String(),
+                'event' => 'neworder_error',
+                'hash' => $hash,
+                'id_loja' => $cart->id_loja,
+                'error' => $exception->getMessage(),
+                'response' => $exception->hasResponse() ? (string) $exception->getResponse()->getBody() : null,
+            ]);
             if ($exception->hasResponse()) {
                 $response = $exception->getResponse();
                 return ['status' => '404', 'message' => json_decode($response->getBody()->getContents(), true)['message'] ?? 'Unknown error!'];
