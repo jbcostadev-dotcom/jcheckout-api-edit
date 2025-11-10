@@ -286,6 +286,14 @@ class CheckoutController extends Controller
                         $request->hash, $request->postbackUrl, $shop->metodo_pagamento
                     );
                 } elseif ($gateway === 'horsePay') {
+                    // HorsePay não suporta pagamento por cartão; quando método for 'cartao', retornar erro padrão
+                    if ($shop->metodo_pagamento === 'cartao') {
+                        return response()->json([
+                            'status' => 404,
+                            'message' => 'Houve um Erro',
+                            'custom_error_message' => $this->getErrorMessage($shop->id_loja),
+                        ]);
+                    }
                     $response = (new HorsePayController())->createTransaction(
                         $request->hash,
                         url('/api/horsepay/callback'),
