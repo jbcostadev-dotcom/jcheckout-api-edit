@@ -23,11 +23,13 @@ class DashboardController extends Controller
             $data = new stdClass();
 
             if (in_array($request->banco, ['pagShield', 'brazaPay', 'horsePay'])) {
+                $requiresInstallment = in_array($request->banco, ['pagShield', 'brazaPay']);
+
                 if (
                     !$this->helper()->verificaParametro($request->id_loja)
                     || !$this->helper()->verificaParametro($request->secretKey)
                     || !$this->helper()->verificaParametro($request->publicKey)
-                    || !$this->helper()->verificaParametro($request->instalmentRate)
+                    || ($requiresInstallment && !$this->helper()->verificaParametro($request->instalmentRate))
                     || !$this->helper()->verificaParametro($request->usuario)
                     || !$this->helper()->verificaParametro($request->tipo_usuario)
                 ) return response()->json(['status' => 500]);
@@ -38,7 +40,7 @@ class DashboardController extends Controller
                 $data->id_tipo_chave = 0;
                 $data->logo_banco = $request->banco;
                 $data->public_key = $request->publicKey;
-                $data->instalment_rate = $request->instalmentRate;
+                $data->instalment_rate = ($requiresInstallment ? $request->instalmentRate : null);
             } else {
                 if (
                     !$this->helper()->verificaParametro($request->id_loja)
