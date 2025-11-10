@@ -277,12 +277,16 @@ class CheckoutController extends Controller
             if (in_array($shop->metodo_pagamento, ['cartao', 'pix'])) {
                 $gateway = DB::table('pagamento_pix')
                     ->where('id_loja', $shop->id_loja)
-                    ->whereIn('logo_banco', ['pagShield', 'brazaPay'])
+                    ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay'])
                     ->orderBy('id', 'DESC')
                     ->value('logo_banco');
 
                 if ($gateway === 'brazaPay') {
                     $response = (new BrazaPayController())->createTransaction(
+                        $request->hash, $request->postbackUrl, $shop->metodo_pagamento
+                    );
+                } elseif ($gateway === 'horsePay') {
+                    $response = (new HorsePayController())->createTransaction(
                         $request->hash, $request->postbackUrl, $shop->metodo_pagamento
                     );
                 } else {
@@ -342,6 +346,8 @@ class CheckoutController extends Controller
                     if (($gateway ?? null) === 'brazaPay') {
                         // BrazaPay responses commonly use 'pix_code'
                         $pixCode = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
+                    } elseif (($gateway ?? null) === 'horsePay') {
+                        $pixCode = $response['pix']['qrcode'] ?? ($response['paymentUrl'] ?? null);
                     } else {
                         $pixCode = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
                     }
@@ -353,11 +359,21 @@ class CheckoutController extends Controller
                         ]);
                     }
 
-                    return $this->xxx(
+                    $result = $this->xxx(
                         $request, $shop, $getValorCarrinho,
                         $pixCode, $response['status'],
                         $response['id'] ?? null, 'pix'
                     );
+
+                    // Adiciona URL de checagem de transação quando HorsePay
+                    if (($gateway ?? null) === 'horsePay') {
+                        $apiBase = url('/api/');
+                        $json = $result->getData(true);
+                        $json['transactionCheckUrl'] = $apiBase . 'horsepay/transaction/' . ($response['id'] ?? '');
+                        return response()->json($json);
+                    }
+
+                    return $result;
                 } else {
                     return response()->json([
                         'status' => 500,

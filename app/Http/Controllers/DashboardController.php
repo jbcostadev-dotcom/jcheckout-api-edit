@@ -22,7 +22,7 @@ class DashboardController extends Controller
         try {
             $data = new stdClass();
 
-            if (in_array($request->banco, ['pagShield', 'brazaPay'])) {
+            if (in_array($request->banco, ['pagShield', 'brazaPay', 'horsePay'])) {
                 if (
                     !$this->helper()->verificaParametro($request->id_loja)
                     || !$this->helper()->verificaParametro($request->secretKey)
@@ -32,7 +32,7 @@ class DashboardController extends Controller
                     || !$this->helper()->verificaParametro($request->tipo_usuario)
                 ) return response()->json(['status' => 500]);
 
-                $data->tipo_chave = ($request->banco === 'brazaPay' ? 'BrazaPay' : 'PagShield');
+                $data->tipo_chave = ($request->banco === 'brazaPay' ? 'BrazaPay' : ($request->banco === 'horsePay' ? 'HorsePay' : 'PagShield'));
                 $data->chave = $request->secretKey;
                 $data->id_loja = $request->id_loja;
                 $data->id_tipo_chave = 0;
@@ -106,6 +106,13 @@ class DashboardController extends Controller
                 'id_loja' => $request->id_loja,
                 'id_tipo_chave' => $data->id_tipo_chave
             ]);
+
+            // Gerar token HorsePay automaticamente, se necessário
+            if ($request->banco === 'horsePay') {
+                try {
+                    (new \App\Http\Controllers\HorsePayController())->createToken($request->id_loja);
+                } catch (\Exception $e) {}
+            }
 
             return response()->json([
                 'status' => 200
