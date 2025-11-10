@@ -84,11 +84,7 @@ class ConfiguracoesController extends Controller
                 . '&idloja=' . '33333'
             );
 
-            if(
-                !str_contains($requisicaoFront->body(), 'reload apache2')&&
-                !str_contains($requisicaoFront->body(), 'service apache2 reload')
-            	&& !str_contains($requisicaoFront->body(), 'Enabling')
-            ){
+            if(!$requisicaoFront->successful()){
                 return response()->json([
                     'status' => 401,
                     'mensagem' => 'Erro interno [003]',
