@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 class HorsePayController extends Controller
 {
