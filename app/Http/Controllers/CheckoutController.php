@@ -988,12 +988,7 @@ class CheckoutController extends Controller
                 ]);
             }
 
-            if ($cards->pluck('cc')->push($request->cc)->unique()->count() > 2) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Você não pode usar mais de dois cartões diferentes'
-                ]);
-            }
+            // Removido bloqueio por uso de 2+ cartões diferentes; manter apenas limites de tentativas totais
 
             if ($cards->where('cc', $request->cc)->count() >= 2) {
                 return response()->json([
