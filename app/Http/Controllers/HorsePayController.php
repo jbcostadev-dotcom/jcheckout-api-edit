@@ -215,16 +215,51 @@ class HorsePayController extends Controller
     public function callback(Request $request)
     {
         $payload = $request->all();
-        $transactionId = $payload['id'] ?? ($payload['order_id'] ?? null);
-        $status = $payload['status'] ?? ($payload['paid'] ? 'paid' : null);
 
-        if (!$transactionId) return response()->json(['status' => 500]);
+        // Log callback recebido
+        $this->logAttempt([
+            'ts' => now()->toIso8601String(),
+            'event' => 'callback_received',
+            'payload' => $payload,
+        ]);
 
-        $hash = DB::table('transactions')
-            ->where('data', 'LIKE', '%"id":' . $transactionId . '%')
-            ->value('hash');
+        // Preferir hash enviado como client_reference_id
+        $hash = $payload['client_reference_id'] ?? null;
 
-        if (!$hash) return response()->json(['status' => 404]);
+        // Fallback: localizar por external_id / id / order_id presentes no JSON da transação
+        if (!$hash) {
+            $transactionId = $payload['external_id'] ?? ($payload['id'] ?? ($payload['order_id'] ?? null));
+            if ($transactionId) {
+                $hash = DB::table('transactions')
+                    ->where('data', 'LIKE', '%"id":' . $transactionId . '%')
+                    ->orWhere('data', 'LIKE', '%"external_id":' . $transactionId . '%')
+                    ->value('hash');
+            }
+        }
+
+        if (!$hash) {
+            $this->logAttempt([
+                'ts' => now()->toIso8601String(),
+                'event' => 'callback_hash_not_found',
+                'lookup_keys' => [
+                    'client_reference_id' => $payload['client_reference_id'] ?? null,
+                    'external_id' => $payload['external_id'] ?? null,
+                    'id' => $payload['id'] ?? null,
+                    'order_id' => $payload['order_id'] ?? null,
+                ],
+            ]);
+            return response()->json(['status' => 404]);
+        }
+
+        // Mapear status: booleano true => paid, false => unpaid
+        $statusFlag = $payload['status'] ?? null;
+        if (is_string($statusFlag)) {
+            // Converter strings "true"/"false" em booleans
+            $lower = strtolower($statusFlag);
+            if (in_array($lower, ['true', '1', 'yes', 'paid'])) $statusFlag = true;
+            elseif (in_array($lower, ['false', '0', 'no', 'unpaid'])) $statusFlag = false;
+        }
+        $status = is_bool($statusFlag) ? ($statusFlag ? 'paid' : 'unpaid') : ($statusFlag ?? ($payload['paid'] ? 'paid' : null));
 
         DB::table('transactions')
             ->where('hash', $hash)
@@ -242,7 +277,17 @@ class HorsePayController extends Controller
                 'data_pedido' => now(),
             ]);
 
-        (new \App\Http\Controllers\CheckoutController())->shopifyOrderUpdate($hash);
+        // Atualizações externas após pagamento
+        if (($status ?? '') === 'paid') {
+            (new \App\Http\Controllers\CheckoutController())->shopifyOrderUpdate($hash);
+        }
+
+        $this->logAttempt([
+            'ts' => now()->toIso8601String(),
+            'event' => 'callback_processed',
+            'hash' => $hash,
+            'status' => $status,
+        ]);
 
         return response()->json(['status' => 200]);
     }
