@@ -95,13 +95,12 @@ class HorsePayController extends Controller
         try {
             $response = $client->request('POST', 'https://api.horsepay.io/transaction/neworder', [
                 'headers' => [
-                    'accept' => 'application/json',
-                    'content-type' => 'application/json',
-                    'authorization' => 'Bearer ' . $token,
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
                 ],
                 'body' => json_encode([
                     'payer_name' => $cart->nome_completo ?? 'Cliente',
-                    'amount' => round($amount, 2),
+                    'amount' => (float) number_format($amount, 2, '.', ''),
                     'callback_url' => $postbackUrl,
                 ]),
             ]);
