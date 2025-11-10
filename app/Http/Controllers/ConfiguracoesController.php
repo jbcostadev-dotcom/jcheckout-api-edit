@@ -7,6 +7,7 @@ use App\Models\Sanctum\PersonalAccessToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class ConfiguracoesController extends Controller
 {
@@ -22,10 +23,15 @@ class ConfiguracoesController extends Controller
                     'mensagem' => 'Houve um erro interno.'
                 ]);
             }
-
-            $frontend_project_ip = DB::table('rota_frontend')->value('ip');
-
-            if (gethostbyname($request->dominio) != $frontend_project_ip) return response()->json(['status' => 300, 'asd' => ['a' => gethostbyname($request->dominio), 'b' => $frontend_project_ip]]);
+            // Verificação compatível com Cloudflare/Proxy:
+            // Em vez de comparar IP do A-record, validamos se o domínio
+            // está servindo a mesma página index do checkout (assinatura).
+            if(!$this->verificaIndexCheckout($request->dominio)){
+                return response()->json([
+                    'status' => 300,
+                    'mensagem' => 'Domínio não parece apontar para o checkout (index sem assinatura).',
+                ]);
+            }
 
             $queryVerificaUsuario = "SELECT qtd_dominio, tipo_usuario, id_usuario FROM users WHERE token_checkout = '" . $request->token . "'";
             $queryVerifica = DB::select(DB::raw($queryVerificaUsuario));
@@ -120,6 +126,45 @@ class ConfiguracoesController extends Controller
                 'status' => 401,
                 'mensagem' => 'Houve um erro interno [500]'
             ]);
+        }
+    }
+
+    /**
+     * Verifica se o domínio está servindo a página index do checkout.
+     * Tenta HTTP e HTTPS e procura por uma assinatura estável no HTML.
+     */
+    private function verificaIndexCheckout(string $dominio): bool
+    {
+        try {
+            $assinaturas = [
+                'meta a_hash="h_checkout"', // presente nas páginas do checkout
+            ];
+
+            $urls = [
+                'http://' . $dominio,
+                'https://' . $dominio,
+            ];
+
+            foreach ($urls as $url) {
+                try {
+                    $resp = Http::timeout(10)->retry(1, 500)->get($url);
+                    if ($resp->successful()) {
+                        $body = $resp->body();
+                        foreach ($assinaturas as $assinatura) {
+                            if (Str::contains($body, $assinatura)) {
+                                return true;
+                            }
+                        }
+                    }
+                } catch (\Throwable $t) {
+                    // Ignora erros por URL e tenta a próxima (ex: TLS, redirecionamento inválido)
+                    continue;
+                }
+            }
+
+            return false;
+        } catch (\Throwable $e) {
+            return false;
         }
     }
 
