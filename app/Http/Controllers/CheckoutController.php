@@ -288,7 +288,7 @@ class CheckoutController extends Controller
                 } elseif ($gateway === 'horsePay') {
                     $response = (new HorsePayController())->createTransaction(
                         $request->hash,
-                        ($request->postbackUrl ?? url('/api/horsepay/callback')),
+                        url('/api/horsepay/callback'),
                         $shop->metodo_pagamento
                     );
                 } else {

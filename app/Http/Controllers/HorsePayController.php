@@ -149,6 +149,7 @@ class HorsePayController extends Controller
                 'payer_name' => $cart->nome_completo ?? 'Cliente',
                 'amount' => (float) number_format($amount, 2, '.', ''),
                 'callback_url' => $postbackUrl,
+                'client_reference_id' => $hash,
             ];
 
             $this->logAttempt([
@@ -181,10 +182,10 @@ class HorsePayController extends Controller
                 'response_keys' => array_keys($data ?? []),
             ]);
 
-            // Normaliza para interface comum (status 200 esperado pelo CheckoutController)
+            // Normaliza para interface comum (status de negócio "Aguardando Pagamento" ao criar PIX)
             return [
                 'id' => $data['external_id'] ?? ($data['id'] ?? ($data['order_id'] ?? null)),
-                'status' => 200,
+                'status' => 'Aguardando Pagamento',
                 'paymentMethod' => 'pix',
                 'pix' => [
                     // BRCode copiado pelo cliente
