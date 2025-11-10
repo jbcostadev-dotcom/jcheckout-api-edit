@@ -349,7 +349,7 @@ class CheckoutController extends Controller
                         // BrazaPay responses commonly use 'pix_code'
                         $pixCode = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
                     } elseif (($gateway ?? null) === 'horsePay') {
-                        $pixCode = $response['pix']['qrcode'] ?? ($response['paymentUrl'] ?? null);
+                        $pixCode = $response['pix']['qrcode'] ?? ($response['copy_past'] ?? null);
                     } else {
                         $pixCode = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
                     }

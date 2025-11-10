@@ -108,16 +108,17 @@ class HorsePayController extends Controller
 
             $data = json_decode($response->getBody(), true);
 
-            // Normaliza para interface comum
+            // Normaliza para interface comum (status 200 esperado pelo CheckoutController)
             return [
-                'id' => $data['id'] ?? ($data['order_id'] ?? null),
-                'status' => 'waiting_payment',
+                'id' => $data['external_id'] ?? ($data['id'] ?? ($data['order_id'] ?? null)),
+                'status' => 200,
                 'paymentMethod' => 'pix',
                 'pix' => [
-                    // HorsePay pode retornar url/qr; se houver 'qrcode' usaremos, senão disponibilizamos url
-                    'qrcode' => $data['qrcode'] ?? ($data['pix_code'] ?? ($data['payment_url'] ?? null)),
+                    // BRCode copiado pelo cliente
+                    'qrcode' => $data['copy_past'] ?? null,
                 ],
-                'paymentUrl' => $data['payment_url'] ?? null,
+                // Caso o frontend queira usar imagem de QR pronta
+                'qrcodeImage' => $data['payment'] ?? null,
             ];
         } catch (RequestException $exception) {
             if ($exception->hasResponse()) {
