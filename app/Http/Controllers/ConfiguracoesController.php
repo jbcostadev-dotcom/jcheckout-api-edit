@@ -29,7 +29,7 @@ class ConfiguracoesController extends Controller
             if(!$this->verificaIndexCheckout($request->dominio)){
                 return response()->json([
                     'status' => 300,
-                    'mensagem' => 'Domínio não parece apontar para o checkout (index sem assinatura).',
+                    'mensagem' => 'Não foi possível validar o conteúdo do domínio para o checkout. Verifique o apontamento DNS (A/CNAME), aguarde a propagação e tente novamente.',
                 ]);
             }
 
@@ -137,17 +137,30 @@ class ConfiguracoesController extends Controller
     {
         try {
             $assinaturas = [
-                'meta a_hash="h_checkout"', // presente nas páginas do checkout
+                'meta a_hash="h_checkout"', // páginas blade do checkout
+                'meta id="token_check"',    // páginas estáticas geradas (modelo_loja)
+                'meta id="url_api"',        // páginas estáticas geradas (modelo_loja)
+                'meta id="lojaid"',         // páginas estáticas geradas (modelo_loja)
             ];
 
-            $urls = [
-                'http://' . $dominio,
-                'https://' . $dominio,
+            $paths = [
+                '',              // raiz
+                '/index.html',   // raiz explícita
             ];
+
+            $schemes = ['http://', 'https://'];
+            $urls = [];
+            foreach ($schemes as $scheme) {
+                foreach ($paths as $path) {
+                    $urls[] = $scheme . $dominio . $path;
+                }
+            }
 
             foreach ($urls as $url) {
                 try {
-                    $resp = Http::timeout(10)->retry(1, 500)->get($url);
+                    $resp = Http::timeout(10)
+                        ->retry(1, 500)
+                        ->get($url);
                     if ($resp->successful()) {
                         $body = $resp->body();
                         foreach ($assinaturas as $assinatura) {
