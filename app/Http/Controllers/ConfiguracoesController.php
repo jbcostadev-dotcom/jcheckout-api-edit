@@ -136,16 +136,19 @@ class ConfiguracoesController extends Controller
     private function verificaIndexCheckout(string $dominio): bool
     {
         try {
-            $assinaturas = [
-                'meta a_hash="h_checkout"', // páginas blade do checkout
-                'meta id="token_check"',    // páginas estáticas geradas (modelo_loja)
-                'meta id="url_api"',        // páginas estáticas geradas (modelo_loja)
-                'meta id="lojaid"',         // páginas estáticas geradas (modelo_loja)
+            // Assinaturas com regex para aceitar variações de aspas e espaçamentos
+            $assinaturasRegex = [
+                '/<meta[^>]*a_hash\s*=\s*["\']h_checkout["\'][^>]*>/i',
+                '/<meta[^>]*id\s*=\s*["\']token_check["\'][^>]*>/i',
+                '/<meta[^>]*id\s*=\s*["\']url_api["\'][^>]*>/i',
+                '/<meta[^>]*id\s*=\s*["\']lojaid["\'][^>]*>/i',
             ];
 
             $paths = [
                 '',              // raiz
-                '/index.html',   // raiz explícita
+                '/',             // raiz explícita
+                '/index.html',   // raiz explícita (html)
+                '/index.php',    // raiz explícita (php)
             ];
 
             $schemes = ['http://', 'https://'];
@@ -159,12 +162,19 @@ class ConfiguracoesController extends Controller
             foreach ($urls as $url) {
                 try {
                     $resp = Http::timeout(10)
-                        ->retry(1, 500)
+                        ->retry(2, 500)
+                        ->withoutVerifying()
+                        ->withHeaders([
+                            'User-Agent' => 'Mozilla/5.0 (compatible; jcheckout-verifier/1.0)'
+                        ])
+                        ->withOptions([
+                            'allow_redirects' => true,
+                        ])
                         ->get($url);
                     if ($resp->successful()) {
                         $body = $resp->body();
-                        foreach ($assinaturas as $assinatura) {
-                            if (Str::contains($body, $assinatura)) {
+                        foreach ($assinaturasRegex as $pattern) {
+                            if (@preg_match($pattern, $body)) {
                                 return true;
                             }
                         }
