@@ -23,15 +23,7 @@ class ConfiguracoesController extends Controller
                     'mensagem' => 'Houve um erro interno.'
                 ]);
             }
-            // Verificação compatível com Cloudflare/Proxy:
-            // Em vez de comparar IP do A-record, validamos se o domínio
-            // está servindo a mesma página index do checkout (assinatura).
-            if(!$this->verificaIndexCheckout($request->dominio)){
-                return response()->json([
-                    'status' => 300,
-                    'mensagem' => 'Não foi possível validar o conteúdo do domínio para o checkout. Verifique o apontamento DNS (A/CNAME), aguarde a propagação e tente novamente.',
-                ]);
-            }
+            // Cadastro direto: remove qualquer verificação de conteúdo/DNS do domínio
 
             $queryVerificaUsuario = "SELECT qtd_dominio, tipo_usuario, id_usuario FROM users WHERE token_checkout = '" . $request->token . "'";
             $queryVerifica = DB::select(DB::raw($queryVerificaUsuario));
@@ -90,13 +82,8 @@ class ConfiguracoesController extends Controller
                 . '&idloja=' . '33333'
             );
 
-            if(!$requisicaoFront->successful()){
-                return response()->json([
-                    'status' => 401,
-                    'mensagem' => 'Erro interno [003]',
-                    'a' => $requisicaoFront->body()
-                ]);
-            }
+            // Não bloquear cadastro se a chamada ao frontend falhar;
+            // mantém tentativa, mas segue com o cadastro no banco.
 
             DB::table('dominio')->insert([
                 'dominio' => $request->dominio,
