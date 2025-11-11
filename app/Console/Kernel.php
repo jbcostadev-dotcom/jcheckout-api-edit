@@ -15,7 +15,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Atualiza tokens HorsePay a cada 6 horas
+        $schedule->command('horsepay:refresh-tokens')
+            ->cron('0 */6 * * *')
+            ->withoutOverlapping();
     }
 
     /**
