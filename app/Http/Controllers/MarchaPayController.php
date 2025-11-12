@@ -117,6 +117,7 @@ class MarchaPayController extends Controller
 
             return [
                 'status' => 200,
+                'paymentMethod' => 'pix',
                 'id' => $response['id'] ?? null,
                 'pix' => [
                     'qrcode' => $pixCode,
