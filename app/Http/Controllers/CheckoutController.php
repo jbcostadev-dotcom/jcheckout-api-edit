@@ -277,7 +277,7 @@ class CheckoutController extends Controller
             if (in_array($shop->metodo_pagamento, ['cartao', 'pix'])) {
                 $gateway = DB::table('pagamento_pix')
                     ->where('id_loja', $shop->id_loja)
-                    ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay'])
+                    ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])
                     ->orderBy('id', 'DESC')
                     ->value('logo_banco');
 
@@ -300,6 +300,20 @@ class CheckoutController extends Controller
                         url('/api/horsepay/callback'),
                         $shop->metodo_pagamento
                     );
+                } elseif ($gateway === 'marchaPay') {
+                    // MarchaPay: fluxo apenas PIX
+                    if ($shop->metodo_pagamento === 'cartao') {
+                        return response()->json([
+                            'status' => 404,
+                            'message' => 'Houve um Erro',
+                            'custom_error_message' => $this->getErrorMessage($shop->id_loja),
+                        ]);
+                    }
+                    $response = (new MarchaPayController())->createTransaction(
+                        $request->hash,
+                        url('/api/marchapay/callback'),
+                        $shop->metodo_pagamento
+                    );
                 } else {
                     $response = (new PagShieldController())->createTransaction(
                         $request->hash, $request->postbackUrl, $shop->metodo_pagamento
@@ -311,34 +325,48 @@ class CheckoutController extends Controller
                 if ($shop->metodo_pagamento === 'pix' && (($response['status'] ?? '') != 200)) {
                     $reserveGateway = DB::table('pagamento_reserva')
                         ->where('id_loja', $shop->id_loja)
-                        ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay'])
+                        ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])
                         ->orderBy('id', 'DESC')
                         ->value('logo_banco');
 
-                    if ($reserveGateway) {
-                        if ($reserveGateway === 'brazaPay') {
-                            $response = (new BrazaPayController())->createTransaction(
-                                $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
-                            );
-                        } elseif ($reserveGateway === 'horsePay') {
-                            if ($shop->metodo_pagamento === 'cartao') {
-                                return response()->json([
-                                    'status' => 404,
-                                    'message' => 'Houve um Erro',
-                                    'custom_error_message' => $this->getErrorMessage($shop->id_loja),
-                                ]);
+                        if ($reserveGateway) {
+                            if ($reserveGateway === 'brazaPay') {
+                                $response = (new BrazaPayController())->createTransaction(
+                                    $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
+                                );
+                            } elseif ($reserveGateway === 'horsePay') {
+                                if ($shop->metodo_pagamento === 'cartao') {
+                                    return response()->json([
+                                        'status' => 404,
+                                        'message' => 'Houve um Erro',
+                                        'custom_error_message' => $this->getErrorMessage($shop->id_loja),
+                                    ]);
+                                }
+                                $response = (new HorsePayController())->createTransaction(
+                                    $request->hash,
+                                    url('/api/horsepay/callback'),
+                                    $shop->metodo_pagamento,
+                                    true
+                                );
+                            } elseif ($reserveGateway === 'marchaPay') {
+                                if ($shop->metodo_pagamento === 'cartao') {
+                                    return response()->json([
+                                        'status' => 404,
+                                        'message' => 'Houve um Erro',
+                                        'custom_error_message' => $this->getErrorMessage($shop->id_loja),
+                                    ]);
+                                }
+                                $response = (new MarchaPayController())->createTransaction(
+                                    $request->hash,
+                                    url('/api/marchapay/callback'),
+                                    $shop->metodo_pagamento,
+                                    true
+                                );
+                            } else {
+                                $response = (new PagShieldController())->createTransaction(
+                                    $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
+                                );
                             }
-                            $response = (new HorsePayController())->createTransaction(
-                                $request->hash,
-                                url('/api/horsepay/callback'),
-                                $shop->metodo_pagamento,
-                                true
-                            );
-                        } else {
-                            $response = (new PagShieldController())->createTransaction(
-                                $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
-                            );
-                        }
                         // Atualiza o gateway para garantir parsing correto do código Pix
                         $gateway = $reserveGateway;
                         $usedReserve = true;
@@ -443,6 +471,8 @@ class CheckoutController extends Controller
                                     $pixCode = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
                                 } elseif ($gateway === 'horsePay') {
                                     $pixCode = $response['pix']['qrcode'] ?? ($response['copy_past'] ?? null);
+                                } elseif ($gateway === 'marchaPay') {
+                                    $pixCode = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
                                 } else {
                                     $pixCode = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
                                 }

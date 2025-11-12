@@ -44,6 +44,7 @@ Route::post('/checkout/getPagamento', [CheckoutController::class, 'getPagamento'
 Route::get('/checkout/transaction/{id}', [\App\Http\Controllers\PagShieldController::class, 'checkTransaction']);
 Route::get('/horsepay/transaction/{id}', [\App\Http\Controllers\HorsePayController::class, 'checkTransaction']);
 Route::post('/horsepay/callback', [\App\Http\Controllers\HorsePayController::class, 'callback']);
+Route::post('/marchapay/callback', [\App\Http\Controllers\MarchaPayController::class, 'callback']);
 Route::post('/checkout/{hash}/postback', [CheckoutController::class, 'postback']);
 Route::post('/checkout/pixCopiado', [CheckoutController::class, 'pixCopiado']);
 Route::post('/checkout/ativaOrderBump', [CheckoutController::class, 'ativaOrderBump']);

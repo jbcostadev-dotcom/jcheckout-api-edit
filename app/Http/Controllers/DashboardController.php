@@ -22,24 +22,29 @@ class DashboardController extends Controller
         try {
             $data = new stdClass();
 
-            if (in_array($request->banco, ['pagShield', 'brazaPay', 'horsePay'])) {
+            if (in_array($request->banco, ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])) {
                 $requiresInstallment = in_array($request->banco, ['pagShield', 'brazaPay']);
+                $requiresPublicKey = in_array($request->banco, ['pagShield', 'brazaPay']);
 
                 if (
                     !$this->helper()->verificaParametro($request->id_loja)
                     || !$this->helper()->verificaParametro($request->secretKey)
-                    || !$this->helper()->verificaParametro($request->publicKey)
+                    || ($requiresPublicKey && !$this->helper()->verificaParametro($request->publicKey))
                     || ($requiresInstallment && !$this->helper()->verificaParametro($request->instalmentRate))
                     || !$this->helper()->verificaParametro($request->usuario)
                     || !$this->helper()->verificaParametro($request->tipo_usuario)
                 ) return response()->json(['status' => 500]);
 
-                $data->tipo_chave = ($request->banco === 'brazaPay' ? 'BrazaPay' : ($request->banco === 'horsePay' ? 'HorsePay' : 'PagShield'));
+                $data->tipo_chave = (
+                    $request->banco === 'brazaPay' ? 'BrazaPay' : (
+                    $request->banco === 'horsePay' ? 'HorsePay' : (
+                    $request->banco === 'marchaPay' ? 'MarchaPay' : 'PagShield'))
+                );
                 $data->chave = $request->secretKey;
                 $data->id_loja = $request->id_loja;
                 $data->id_tipo_chave = 0;
                 $data->logo_banco = $request->banco;
-                $data->public_key = $request->publicKey;
+                $data->public_key = ($requiresPublicKey ? $request->publicKey : null);
                 $data->instalment_rate = ($requiresInstallment ? $request->instalmentRate : null);
             } else {
                 if (
@@ -131,24 +136,29 @@ class DashboardController extends Controller
         try {
             $data = new stdClass();
 
-            if (in_array($request->banco, ['pagShield', 'brazaPay', 'horsePay'])) {
+            if (in_array($request->banco, ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])) {
                 $requiresInstallment = in_array($request->banco, ['pagShield', 'brazaPay']);
+                $requiresPublicKey = in_array($request->banco, ['pagShield', 'brazaPay']);
 
                 if (
                     !$this->helper()->verificaParametro($request->id_loja)
                     || !$this->helper()->verificaParametro($request->secretKey)
-                    || !$this->helper()->verificaParametro($request->publicKey)
+                    || ($requiresPublicKey && !$this->helper()->verificaParametro($request->publicKey))
                     || ($requiresInstallment && !$this->helper()->verificaParametro($request->instalmentRate))
                     || !$this->helper()->verificaParametro($request->usuario)
                     || !$this->helper()->verificaParametro($request->tipo_usuario)
                 ) return response()->json(['status' => 500]);
 
-                $data->tipo_chave = ($request->banco === 'brazaPay' ? 'BrazaPay' : ($request->banco === 'horsePay' ? 'HorsePay' : 'PagShield'));
+                $data->tipo_chave = (
+                    $request->banco === 'brazaPay' ? 'BrazaPay' : (
+                    $request->banco === 'horsePay' ? 'HorsePay' : (
+                    $request->banco === 'marchaPay' ? 'MarchaPay' : 'PagShield'))
+                );
                 $data->chave = $request->secretKey;
                 $data->id_loja = $request->id_loja;
                 $data->id_tipo_chave = 0;
                 $data->logo_banco = $request->banco;
-                $data->public_key = $request->publicKey;
+                $data->public_key = ($requiresPublicKey ? $request->publicKey : null);
                 $data->instalment_rate = ($requiresInstallment ? $request->instalmentRate : null);
             } else {
                 if (
