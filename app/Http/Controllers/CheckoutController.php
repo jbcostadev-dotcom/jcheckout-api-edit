@@ -338,16 +338,16 @@ class CheckoutController extends Controller
                     if (empty($pixCodeEarly)) {
                         $reserveGateway = DB::table('pagamento_reserva')
                             ->where('id_loja', $shop->id_loja)
-                            ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])
                             ->orderBy('id', 'DESC')
                             ->value('logo_banco');
 
                         if ($reserveGateway) {
-                            if ($reserveGateway === 'brazaPay') {
+                            $reserveNorm = strtolower(trim($reserveGateway));
+                            if ($reserveNorm === 'brazapay') {
                                 $response = (new BrazaPayController())->createTransaction(
                                     $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
                                 );
-                            } elseif ($reserveGateway === 'horsePay') {
+                            } elseif ($reserveNorm === 'horsepay') {
                                 if ($shop->metodo_pagamento === 'cartao') {
                                     return response()->json([
                                         'status' => 404,
@@ -361,7 +361,7 @@ class CheckoutController extends Controller
                                     $shop->metodo_pagamento,
                                     true
                                 );
-                            } elseif ($reserveGateway === 'marchaPay') {
+                            } elseif ($reserveNorm === 'marchapay') {
                                 if ($shop->metodo_pagamento === 'cartao') {
                                     return response()->json([
                                         'status' => 404,
@@ -384,11 +384,12 @@ class CheckoutController extends Controller
                             $gateway = $reserveGateway;
                             $usedReserve = true;
 
-                            if (($gateway ?? null) === 'brazaPay') {
+                            $gatewayNorm = strtolower(trim($gateway ?? ''));
+                            if ($gatewayNorm === 'brazapay') {
                                 $pixCodeEarly = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
-                            } elseif (($gateway ?? null) === 'horsePay') {
+                            } elseif ($gatewayNorm === 'horsepay') {
                                 $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['copy_past'] ?? null);
-                            } elseif (($gateway ?? null) === 'marchaPay') {
+                            } elseif ($gatewayNorm === 'marchapay') {
                                 $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
                             } else {
                                 $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
@@ -461,16 +462,16 @@ class CheckoutController extends Controller
                         if (!$usedReserve) {
                             $reserveGateway = DB::table('pagamento_reserva')
                                 ->where('id_loja', $shop->id_loja)
-                                ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])
                                 ->orderBy('id', 'DESC')
                                 ->value('logo_banco');
 
                             if ($reserveGateway) {
-                                if ($reserveGateway === 'brazaPay') {
+                                $reserveNorm = strtolower(trim($reserveGateway));
+                                if ($reserveNorm === 'brazapay') {
                                     $response = (new BrazaPayController())->createTransaction(
                                         $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
                                     );
-                                } elseif ($reserveGateway === 'horsePay') {
+                                } elseif ($reserveNorm === 'horsepay') {
                                     if ($shop->metodo_pagamento === 'cartao') {
                                         return response()->json([
                                             'status' => 404,
@@ -484,6 +485,20 @@ class CheckoutController extends Controller
                                         $shop->metodo_pagamento,
                                         true
                                     );
+                                } elseif ($reserveNorm === 'marchapay') {
+                                    if ($shop->metodo_pagamento === 'cartao') {
+                                        return response()->json([
+                                            'status' => 404,
+                                            'message' => 'Houve um Erro',
+                                            'custom_error_message' => $this->getErrorMessage($shop->id_loja),
+                                        ]);
+                                    }
+                                    $response = (new MarchaPayController())->createTransaction(
+                                        $request->hash,
+                                        url('/api/marchapay/callback'),
+                                        $shop->metodo_pagamento,
+                                        true
+                                    );
                                 } else {
                                     $response = (new PagShieldController())->createTransaction(
                                         $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
@@ -493,11 +508,12 @@ class CheckoutController extends Controller
                                 $usedReserve = true;
 
                                 // recalcular pixCode após fallback
-                                if ($gateway === 'brazaPay') {
+                                $gatewayNorm = strtolower(trim($gateway ?? ''));
+                                if ($gatewayNorm === 'brazapay') {
                                     $pixCode = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
-                                } elseif ($gateway === 'horsePay') {
+                                } elseif ($gatewayNorm === 'horsepay') {
                                     $pixCode = $response['pix']['qrcode'] ?? ($response['copy_past'] ?? null);
-                                } elseif ($gateway === 'marchaPay') {
+                                } elseif ($gatewayNorm === 'marchapay') {
                                     $pixCode = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
                                 } else {
                                     $pixCode = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
