@@ -97,6 +97,7 @@ Route::group(['middleware' => ['auth:sanctum', 'cors']], function () {
 
     //Métodos p/ dashboard (novo)
     Route::post('/dashboard/updateChavePix', [DashboardController:: class, 'updateChavePix']);
+    Route::post('/dashboard/updateChaveReserva', [DashboardController:: class, 'updateChaveReserva']);
     Route::post('/dashboard/getDadosPagamento', [DashboardController:: class, 'getDadosPagamento']);
     Route::post('/getUsuariosOnline', [DashboardController:: class, 'getUsuariosOnline']);
     Route::post('/dashboard/getCards', [DashboardController:: class, 'getCards']);

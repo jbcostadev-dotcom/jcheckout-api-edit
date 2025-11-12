@@ -126,6 +126,115 @@ class DashboardController extends Controller
         }
     }
 
+    public function updateChaveReserva(Request $request)
+    {
+        try {
+            $data = new stdClass();
+
+            if (in_array($request->banco, ['pagShield', 'brazaPay', 'horsePay'])) {
+                $requiresInstallment = in_array($request->banco, ['pagShield', 'brazaPay']);
+
+                if (
+                    !$this->helper()->verificaParametro($request->id_loja)
+                    || !$this->helper()->verificaParametro($request->secretKey)
+                    || !$this->helper()->verificaParametro($request->publicKey)
+                    || ($requiresInstallment && !$this->helper()->verificaParametro($request->instalmentRate))
+                    || !$this->helper()->verificaParametro($request->usuario)
+                    || !$this->helper()->verificaParametro($request->tipo_usuario)
+                ) return response()->json(['status' => 500]);
+
+                $data->tipo_chave = ($request->banco === 'brazaPay' ? 'BrazaPay' : ($request->banco === 'horsePay' ? 'HorsePay' : 'PagShield'));
+                $data->chave = $request->secretKey;
+                $data->id_loja = $request->id_loja;
+                $data->id_tipo_chave = 0;
+                $data->logo_banco = $request->banco;
+                $data->public_key = $request->publicKey;
+                $data->instalment_rate = ($requiresInstallment ? $request->instalmentRate : null);
+            } else {
+                if (
+                    !$this->helper()->verificaParametro($request->id_loja)
+                    || !$this->helper()->verificaParametro($request->chavepix)
+                    || !$this->helper()->verificaParametro($request->tipochave)
+                    || !$this->helper()->verificaParametro($request->usuario)
+                    || !$this->helper()->verificaParametro($request->tipo_usuario)
+                ) return response()->json(['status' => 500]);
+
+                $tipoPix = ['CPF', 'Telefone', 'Email', 'Chave Aleatória'];
+
+                $data->tipo_chave = $tipoPix[$request->tipochave - 1];
+                $data->chave = $request->chavepix;
+                $data->id_loja = $request->id_loja;
+                $data->id_tipo_chave = $request->tipochave;
+                $data->logo_banco = $request->banco;
+                $data->public_key = null;
+                $data->instalment_rate = null;
+            }
+
+            $verifica = $this->helper()->query(
+                "SELECT id
+                 FROM pagamento_reserva
+                 WHERE id_loja = :id_loja",
+                ['id_loja' => $data->id_loja]
+            );
+
+            if (count($verifica) < 1) {
+                DB::table('pagamento_reserva')->insert([
+                    'tipo_chave' => $data->tipo_chave,
+                    'chave' => $data->chave,
+                    'id_loja' => $data->id_loja,
+                    'id_tipo_chave' => $data->id_tipo_chave,
+                    'logo_banco' => $data->logo_banco,
+                    'public_key' => $data->public_key,
+                    'instalment_rate' => $data->instalment_rate
+                ]);
+            } else {
+                $this->helper()->query(
+                    'UPDATE pagamento_reserva
+                     SET chave = :chave,
+                         id_tipo_chave = :id_tipo_chave,
+                         tipo_chave = :tipo_chave,
+                         logo_banco = :logo_banco,
+                         public_key = :public_key,
+                         instalment_rate = :instalment_rate
+                     WHERE id_loja = :id_loja',
+                    [
+                        'id_loja' => $data->id_loja,
+                        'chave' => $data->chave,
+                        'tipo_chave' => $data->tipo_chave,
+                        'id_tipo_chave' => $data->id_tipo_chave,
+                        'logo_banco' => $data->logo_banco,
+                        'public_key' => $data->public_key,
+                        'instalment_rate' => $data->instalment_rate
+                    ]
+                );
+            }
+
+            DB::table('log_cadastro_pix')->insert([
+                'id_usuario' => $request->usuario,
+                'tipo_usuario' => $request->tipo_usuario,
+                'chavepix' => $data->chave,
+                'data_horario' => date('Y-m-d H:i:s'),
+                'id_loja' => $request->id_loja,
+                'id_tipo_chave' => $data->id_tipo_chave
+            ]);
+
+            // Gerar token HorsePay automaticamente, se necessário (reserva)
+            if ($request->banco === 'horsePay') {
+                try {
+                    (new \App\Http\Controllers\HorsePayController())->createToken($request->id_loja, true);
+                } catch (\Exception $e) {}
+            }
+
+            return response()->json([
+                'status' => 200
+            ]);
+
+        } catch (\Exception $e) {
+            return $e;
+            return response()->json(['status' => 500]);
+        }
+    }
+
     public function getDadosPagamento(Request $request)
     {
         try {
@@ -137,6 +246,13 @@ class DashboardController extends Controller
                 "SELECT *
                 FROM pagamento_pix
                 WHERE id_loja = :id_loja",
+                ['id_loja' => $request->id_loja]
+            );
+
+            $queryPixReserva = $helper->query(
+                "SELECT *
+                 FROM pagamento_reserva
+                 WHERE id_loja = :id_loja",
                 ['id_loja' => $request->id_loja]
             );
 
@@ -175,6 +291,10 @@ class DashboardController extends Controller
                 'pix' => (empty($queryPix)
                     ? null
                     : (array)$queryPix[0]
+                ),
+                'pix_reserva' => (empty($queryPixReserva)
+                    ? null
+                    : (array)$queryPixReserva[0]
                 )
             ]);
         } catch (\Exception $e) {

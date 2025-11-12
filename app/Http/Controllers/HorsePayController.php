@@ -28,12 +28,12 @@ class HorsePayController extends Controller
             ->first();
     }
 
-    public function createToken($idLoja)
+    public function createToken($idLoja, $useReserve = false)
     {
         try {
             $client = new \GuzzleHttp\Client();
 
-            $pix = DB::table('pagamento_pix')
+            $pix = DB::table($useReserve ? 'pagamento_reserva' : 'pagamento_pix')
                 ->where('id_loja', $idLoja)
                 ->where('logo_banco', 'horsePay')
                 ->first();
@@ -74,7 +74,7 @@ class HorsePayController extends Controller
             $token = $data['token'] ?? ($data['access_token'] ?? null);
 
             if ($token) {
-                DB::table('pagamento_pix')
+                DB::table($useReserve ? 'pagamento_reserva' : 'pagamento_pix')
                     ->where('id_loja', $idLoja)
                     ->where('logo_banco', 'horsePay')
                     ->update(['token_horsepay' => $token]);
@@ -107,14 +107,14 @@ class HorsePayController extends Controller
         }
     }
 
-    public function createTransaction($hash, $postbackUrl, $paymentMethod)
+    public function createTransaction($hash, $postbackUrl, $paymentMethod, $useReserve = false)
     {
         $client = new \GuzzleHttp\Client();
 
         $cart = $this->getShopDataByHash($hash);
         if (!$cart) return ['status' => '404', 'message' => 'Nenhum dado de carrinho encontrado!'];
 
-        $pix = DB::table('pagamento_pix')
+        $pix = DB::table($useReserve ? 'pagamento_reserva' : 'pagamento_pix')
             ->where('id_loja', $cart->id_loja)
             ->where('logo_banco', 'horsePay')
             ->first();
@@ -123,7 +123,7 @@ class HorsePayController extends Controller
 
         $token = $pix->token_horsepay;
         if (!$token) {
-            $token = $this->createToken($cart->id_loja);
+            $token = $this->createToken($cart->id_loja, $useReserve);
             if (!$token) return ['status' => '404', 'message' => 'Falha ao obter token HorsePay!'];
         }
 

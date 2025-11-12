@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class BrazaPayController extends Controller
 {
-    public function createTransaction($hash, $postbackUrl, $paymentMethod)
+    public function createTransaction($hash, $postbackUrl, $paymentMethod, $useReserve = false)
     {
         $client = new \GuzzleHttp\Client();
 
@@ -19,7 +19,7 @@ class BrazaPayController extends Controller
 
         if (!$cart) return ['status' => '404', 'message' => 'Nenhum dado de carrinho encontrado!'];
 
-        $brazaData = DB::table('pagamento_pix')
+        $brazaData = DB::table($useReserve ? 'pagamento_reserva' : 'pagamento_pix')
             ->where('id_loja', $cart->id_loja)
             ->where('logo_banco', 'brazaPay')
             ->first();

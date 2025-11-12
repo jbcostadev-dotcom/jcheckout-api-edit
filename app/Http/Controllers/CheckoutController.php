@@ -281,6 +281,7 @@ class CheckoutController extends Controller
                     ->orderBy('id', 'DESC')
                     ->value('logo_banco');
 
+                // Primeira tentativa com credenciais principais
                 if ($gateway === 'brazaPay') {
                     $response = (new BrazaPayController())->createTransaction(
                         $request->hash, $request->postbackUrl, $shop->metodo_pagamento
@@ -305,7 +306,42 @@ class CheckoutController extends Controller
                     );
                 }
 
-                if ($response['status'] == 404) {
+                // Fallback automático para credenciais de reserva
+                if (($response['status'] ?? '') == 404) {
+                    $reserveGateway = DB::table('pagamento_reserva')
+                        ->where('id_loja', $shop->id_loja)
+                        ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay'])
+                        ->orderBy('id', 'DESC')
+                        ->value('logo_banco');
+
+                    if ($reserveGateway) {
+                        if ($reserveGateway === 'brazaPay') {
+                            $response = (new BrazaPayController())->createTransaction(
+                                $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
+                            );
+                        } elseif ($reserveGateway === 'horsePay') {
+                            if ($shop->metodo_pagamento === 'cartao') {
+                                return response()->json([
+                                    'status' => 404,
+                                    'message' => 'Houve um Erro',
+                                    'custom_error_message' => $this->getErrorMessage($shop->id_loja),
+                                ]);
+                            }
+                            $response = (new HorsePayController())->createTransaction(
+                                $request->hash,
+                                url('/api/horsepay/callback'),
+                                $shop->metodo_pagamento,
+                                true
+                            );
+                        } else {
+                            $response = (new PagShieldController())->createTransaction(
+                                $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
+                            );
+                        }
+                    }
+                }
+
+                if (($response['status'] ?? '') == 404) {
                     $response['custom_error_message'] = $this->getErrorMessage($shop->id_loja);
                     return response()->json($response);
                 }
