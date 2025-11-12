@@ -320,14 +320,27 @@ class CheckoutController extends Controller
                     );
                 }
 
-                // Fallback automático para credenciais de reserva: tentar em QUALQUER erro de geração de PIX
+                // Avaliar sucesso de PIX pela presença do código, não apenas pelo status HTTP
                 $usedReserve = false;
-                if ($shop->metodo_pagamento === 'pix' && (($response['status'] ?? '') != 200)) {
-                    $reserveGateway = DB::table('pagamento_reserva')
-                        ->where('id_loja', $shop->id_loja)
-                        ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])
-                        ->orderBy('id', 'DESC')
-                        ->value('logo_banco');
+                $pixCodeEarly = null;
+                if ($shop->metodo_pagamento === 'pix') {
+                    if (($gateway ?? null) === 'brazaPay') {
+                        $pixCodeEarly = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
+                    } elseif (($gateway ?? null) === 'horsePay') {
+                        $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['copy_past'] ?? null);
+                    } elseif (($gateway ?? null) === 'marchaPay') {
+                        $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
+                    } else {
+                        $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
+                    }
+
+                    // Se não veio código PIX, tentar com credenciais de reserva
+                    if (empty($pixCodeEarly)) {
+                        $reserveGateway = DB::table('pagamento_reserva')
+                            ->where('id_loja', $shop->id_loja)
+                            ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])
+                            ->orderBy('id', 'DESC')
+                            ->value('logo_banco');
 
                         if ($reserveGateway) {
                             if ($reserveGateway === 'brazaPay') {
@@ -367,13 +380,25 @@ class CheckoutController extends Controller
                                     $request->hash, $request->postbackUrl, $shop->metodo_pagamento, true
                                 );
                             }
-                        // Atualiza o gateway para garantir parsing correto do código Pix
-                        $gateway = $reserveGateway;
-                        $usedReserve = true;
+                            // Atualiza o gateway e recalcula o código PIX
+                            $gateway = $reserveGateway;
+                            $usedReserve = true;
+
+                            if (($gateway ?? null) === 'brazaPay') {
+                                $pixCodeEarly = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
+                            } elseif (($gateway ?? null) === 'horsePay') {
+                                $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['copy_past'] ?? null);
+                            } elseif (($gateway ?? null) === 'marchaPay') {
+                                $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
+                            } else {
+                                $pixCodeEarly = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
+                            }
+                        }
                     }
                 }
 
-                if (($response['status'] ?? '') != 200) {
+                // Se não é cartão e já temos código PIX, não barrar por status != 200
+                if (($response['status'] ?? '') != 200 && !($shop->metodo_pagamento === 'pix' && !empty($pixCodeEarly))) {
                     $response['custom_error_message'] = $this->getErrorMessage($shop->id_loja);
                     return response()->json($response);
                 }
@@ -420,14 +445,15 @@ class CheckoutController extends Controller
                         $request->hash, $response['status'], 'pix'
                     );
 
-                    $pixCode = null;
+                    // Reutiliza o cálculo inicial, quando disponível
+                    $pixCode = $pixCodeEarly ?? null;
                     if (($gateway ?? null) === 'brazaPay') {
                         // BrazaPay responses commonly use 'pix_code'
-                        $pixCode = $response['pix_code'] ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
+                        $pixCode = $pixCode ?? ($response['pix']['qrCode'] ?? $response['pix']['qrcode'] ?? null);
                     } elseif (($gateway ?? null) === 'horsePay') {
-                        $pixCode = $response['pix']['qrcode'] ?? ($response['copy_past'] ?? null);
+                        $pixCode = $pixCode ?? ($response['pix']['qrcode'] ?? ($response['copy_past'] ?? null));
                     } else {
-                        $pixCode = $response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null);
+                        $pixCode = $pixCode ?? ($response['pix']['qrcode'] ?? ($response['pix']['qrCode'] ?? null));
                     }
 
                     // Se não veio código PIX, tentar novamente com credenciais de reserva (caso ainda não tenha tentado)
@@ -435,7 +461,7 @@ class CheckoutController extends Controller
                         if (!$usedReserve) {
                             $reserveGateway = DB::table('pagamento_reserva')
                                 ->where('id_loja', $shop->id_loja)
-                                ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay'])
+                                ->whereIn('logo_banco', ['pagShield', 'brazaPay', 'horsePay', 'marchaPay'])
                                 ->orderBy('id', 'DESC')
                                 ->value('logo_banco');
 
